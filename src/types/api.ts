@@ -1,0 +1,425 @@
+export interface Permission {
+  id: number;
+  name: string;
+  slug: string;
+  module?: string;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  slug: string;
+}
+
+export interface AdminUser {
+  id: number;
+  name: string;
+  email: string;
+  phone: string | null;
+  is_active: boolean;
+  roles: Role[];
+  permissions: Permission[];
+}
+
+export interface LoginResponse {
+  token_type: string;
+  access_token: string;
+  user: AdminUser;
+}
+
+export interface MeResponse {
+  data: AdminUser;
+}
+
+export interface ApiValidationError {
+  message: string;
+  errors: Record<string, string[]>;
+}
+
+export interface LookupRef {
+  id: number;
+  name: string;
+  slug: string;
+  image_path?: string | null;
+}
+
+export interface Paginated<T> {
+  data: T[];
+  links: {
+    first: string | null;
+    last: string | null;
+    prev: string | null;
+    next: string | null;
+  };
+  meta: {
+    current_page: number;
+    from: number | null;
+    last_page: number;
+    path: string;
+    per_page: number;
+    to: number | null;
+    total: number;
+  };
+}
+
+export interface VehicleBrand {
+  id: number;
+  name: string;
+  slug: string;
+  image_path: string | null;
+  is_active: boolean;
+}
+
+export interface VehicleCategory {
+  id: number;
+  name: string;
+  slug: string;
+  description: string | null;
+  is_active: boolean;
+}
+
+export interface Vehicle {
+  id: number;
+  name: string;
+  slug: string;
+  model: string;
+  year: number;
+  plate_number: string;
+  mileage: number;
+  current_mileage_updated_at: string | null;
+  seats: number;
+  doors: number;
+  daily_price: string;
+  weekly_price: string | null;
+  monthly_price: string | null;
+  deposit_amount: string;
+  description: string | null;
+  is_featured: boolean;
+  is_active: boolean;
+  brand: LookupRef;
+  category: LookupRef;
+  status: LookupRef;
+  transmission_type: LookupRef;
+  fuel_type: LookupRef;
+  photos?: VehiclePhoto[];
+  documents?: VehicleDocument[];
+}
+
+export interface VehiclePhoto {
+  id: number;
+  path: string;
+  alt_text: string | null;
+  sort_order: number;
+  is_primary: boolean;
+}
+
+export interface VehicleDocument {
+  id: number;
+  document_type: LookupRef;
+  title: string;
+  file_path: string;
+  expires_at: string | null;
+}
+
+export interface CreateVehiclePayload {
+  brand_id: number;
+  category_id: number;
+  status_slug: string;
+  transmission_type_slug: string;
+  fuel_type_slug: string;
+  name: string;
+  slug: string;
+  model: string;
+  year: number;
+  plate_number: string;
+  mileage: number;
+  seats: number;
+  doors: number;
+  daily_price: number;
+  weekly_price?: number | null;
+  monthly_price?: number | null;
+  deposit_amount: number;
+  description?: string | null;
+  current_mileage_updated_at?: string | null;
+  is_featured?: boolean;
+  is_active?: boolean;
+}
+
+export interface Location {
+  id: number;
+  name: string;
+  slug: string;
+  address: string | null;
+  delivery_fee: string;
+  is_active: boolean;
+  location_type: LookupRef;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateLocationPayload {
+  location_type_slug: string;
+  name: string;
+  slug: string;
+  address?: string | null;
+  delivery_fee?: number;
+  is_active?: boolean;
+}
+
+export interface Customer {
+  id: number;
+  full_name: string;
+  nationality: string;
+  phone: string;
+  email: string | null;
+  passport_or_cin: string | null;
+  driving_license_number: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateCustomerPayload {
+  full_name: string;
+  nationality: string;
+  phone: string;
+  email?: string | null;
+  passport_or_cin?: string | null;
+  driving_license_number?: string | null;
+}
+
+export interface Reservation {
+  id: number;
+  reservation_number: string;
+  customer: Customer;
+  vehicle: Vehicle;
+  source: LookupRef;
+  status: LookupRef;
+  payment_status: LookupRef;
+  pickup_location: Location;
+  dropoff_location: Location;
+  start_datetime: string;
+  end_datetime: string;
+  total_days: number;
+  price_per_day: string;
+  delivery_fee: string;
+  deposit_amount: string;
+  total_price: string;
+  customer_notes: string | null;
+  admin_notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateReservationPayload {
+  customer_id: number;
+  vehicle_id: number;
+  pickup_location_id: number;
+  dropoff_location_id: number;
+  start_datetime: string;
+  end_datetime: string;
+  customer_notes?: string | null;
+  admin_notes?: string | null;
+}
+
+export interface AdminLookups {
+  vehicle_statuses: LookupRef[];
+  transmission_types: LookupRef[];
+  fuel_types: LookupRef[];
+  reservation_statuses: LookupRef[];
+  payment_statuses: LookupRef[];
+  payment_methods: LookupRef[];
+  payment_types: LookupRef[];
+  reservation_sources: LookupRef[];
+  location_types: LookupRef[];
+  maintenance_types: LookupRef[];
+  expense_categories: LookupRef[];
+  alert_types: LookupRef[];
+  alert_statuses: LookupRef[];
+  document_types: LookupRef[];
+  contract_statuses: LookupRef[];
+  vehicle_brands: VehicleBrand[];
+  vehicle_categories: VehicleCategory[];
+  locations: Location[];
+}
+
+export interface DashboardStatistics {
+  global_kpis: {
+    total_vehicles: number;
+    available_vehicles: number;
+    reserved_vehicles: number;
+    rented_vehicles: number;
+    pending_reservations: number;
+    confirmed_reservations: number;
+    total_customers: number;
+    pending_alerts: number;
+    monthly_revenue: number;
+    monthly_expenses: number;
+    monthly_net_profit: number;
+  };
+  month: { year: number; month: number };
+}
+
+export interface Alert {
+  id: number;
+  title: string;
+  message: string | null;
+  due_date: string | null;
+  alert_type: LookupRef;
+  alert_status: LookupRef;
+  vehicle?: {
+    id: number;
+    name: string;
+    slug: string;
+    plate_number: string;
+  } | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface Payment {
+  id: number;
+  amount: string;
+  payment_date: string;
+  paid_by_customer_name: string | null;
+  reference: string | null;
+  notes: string | null;
+  payment_method: LookupRef;
+  payment_type: LookupRef;
+  payment_status: LookupRef;
+  reservation?: {
+    id: number;
+    reservation_number: string;
+    total_price?: string;
+  };
+  created_at: string;
+  updated_at: string;
+}
+
+export interface PaymentSummary {
+  reservation_id: number;
+  reservation_number: string;
+  total_price: number;
+  paid_amount: number;
+  remaining_amount: number;
+  payment_status: LookupRef;
+}
+
+export interface CreatePaymentPayload {
+  reservation_id: number;
+  payment_method_slug: string;
+  payment_type_slug: string;
+  payment_status_slug: string;
+  amount: number;
+  payment_date: string;
+  paid_by_customer_name?: string | null;
+  reference?: string | null;
+  notes?: string | null;
+}
+
+export interface Maintenance {
+  id: number;
+  vehicle: {
+    id: number;
+    name: string;
+    slug: string;
+    plate_number: string;
+  };
+  maintenance_type: LookupRef;
+  maintenance_date: string;
+  next_maintenance_date: string | null;
+  mileage: number | null;
+  cost: string | null;
+  garage_name: string | null;
+  notes: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateMaintenancePayload {
+  vehicle_id: number;
+  maintenance_type_slug: string;
+  maintenance_date: string;
+  next_maintenance_date?: string | null;
+  mileage?: number | null;
+  cost?: number | null;
+  garage_name?: string | null;
+  notes?: string | null;
+  vehicle_status_slug?: string | null;
+  create_expense?: boolean;
+  expense_category_slug?: string | null;
+}
+
+export interface Expense {
+  id: number;
+  vehicle: {
+    id: number;
+    name: string;
+    slug: string;
+    plate_number: string;
+  } | null;
+  expense_category: LookupRef;
+  amount: string;
+  expense_date: string;
+  description: string | null;
+  has_invoice: boolean;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateExpensePayload {
+  vehicle_id?: number | null;
+  expense_category_slug: string;
+  amount: number;
+  expense_date: string;
+  description?: string | null;
+}
+
+export interface Contract {
+  id: number;
+  reservation_id: number;
+  contract_number: string;
+  status: LookupRef;
+  has_pdf: boolean;
+  has_signed_pdf: boolean;
+  generated_at: string | null;
+  signed_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface DashboardRevenueReport {
+  daily_revenue: number;
+  monthly_revenue: number;
+  yearly_revenue: number;
+  date_range_revenue: number;
+  date_range: { start_date: string; end_date: string };
+  group_by: string;
+  grouped_revenue: Record<string, number>;
+}
+
+export interface DashboardExpenseReport {
+  monthly_expenses: number;
+  date_range_expenses: number;
+  date_range: { start_date: string; end_date: string };
+  group_by: string;
+  grouped_expenses: Record<string, number>;
+  expenses_by_category: Array<{ slug: string; name: string; total: number }>;
+  expenses_by_vehicle: Array<{ vehicle_id: number; vehicle_name: string; total: number }>;
+}
+
+export interface CustomerDocument {
+  id: number;
+  document_type: LookupRef;
+  title: string;
+  file_path: string;
+  expires_at: string | null;
+}
+
+export interface CreateAlertPayload {
+  vehicle_id?: number | null;
+  alert_type_slug: string;
+  alert_status_slug?: string;
+  title: string;
+  message?: string | null;
+  due_date?: string | null;
+}
