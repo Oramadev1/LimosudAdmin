@@ -2,7 +2,9 @@
 
 import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useSubmitLock } from "@/lib/use-submit-lock";
+import { useQuery } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
   checkReservationAvailability,
@@ -33,45 +35,52 @@ export default function NewReservationPage() {
   const { data: vehicles } = useQuery({ queryKey: ["vehicles", 1], queryFn: () => getVehicles(1) });
   const { data: locations } = useQuery({ queryKey: ["locations", 1], queryFn: () => getLocations(1) });
 
-  const createMutation = useMutation({
+  const createMutation = useLockedMutation({
     mutationFn: createReservation,
     onSuccess: (response) => router.push(`/reservations/${response.data.id}`),
   });
+  const { runOnce, busy } = useSubmitLock();
 
-  const checkAvailability = async () => {
-    if (!form.vehicle_id || !form.start_datetime || !form.end_datetime) return;
-    try {
-      const result = await checkReservationAvailability({
-        vehicle_id: Number(form.vehicle_id),
-        start_datetime: form.start_datetime.replace("T", " ") + ":00",
-        end_datetime: form.end_datetime.replace("T", " ") + ":00",
-      });
-      setAvailability(result.available);
-    } catch {
-      setAvailability(null);
-    }
+  const checkAvailability = () => {
+    void runOnce(async () => {
+      if (!form.vehicle_id || !form.start_datetime || !form.end_datetime) return;
+
+      try {
+        const result = await checkReservationAvailability({
+          vehicle_id: Number(form.vehicle_id),
+          start_datetime: form.start_datetime.replace("T", " ") + ":00",
+          end_datetime: form.end_datetime.replace("T", " ") + ":00",
+        });
+        setAvailability(result.available);
+      } catch {
+        setAvailability(null);
+      }
+    });
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
-    try {
-      await createMutation.mutateAsync({
-        customer_id: Number(form.customer_id),
-        vehicle_id: Number(form.vehicle_id),
-        pickup_location_id: Number(form.pickup_location_id),
-        dropoff_location_id: Number(form.dropoff_location_id),
-        start_datetime: form.start_datetime.replace("T", " ") + ":00",
-        end_datetime: form.end_datetime.replace("T", " ") + ":00",
-        customer_notes: form.customer_notes || null,
-        admin_notes: form.admin_notes || null,
-      });
-    } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-      setError(
-        isValidationError(body) ? body.message : err instanceof ApiError ? err.message : "Create failed.",
-      );
-    }
+
+    await runOnce(async () => {
+      setError(null);
+      try {
+        await createMutation.mutateAsync({
+          customer_id: Number(form.customer_id),
+          vehicle_id: Number(form.vehicle_id),
+          pickup_location_id: Number(form.pickup_location_id),
+          dropoff_location_id: Number(form.dropoff_location_id),
+          start_datetime: form.start_datetime.replace("T", " ") + ":00",
+          end_datetime: form.end_datetime.replace("T", " ") + ":00",
+          customer_notes: form.customer_notes || null,
+          admin_notes: form.admin_notes || null,
+        });
+      } catch (err) {
+        const body = err instanceof ApiError ? err.body : err;
+        setError(
+          isValidationError(body) ? body.message : err instanceof ApiError ? err.message : "Create failed.",
+        );
+      }
+    });
   };
 
   return (
@@ -156,7 +165,7 @@ export default function NewReservationPage() {
         />
 
         <div className="flex flex-wrap gap-3">
-          <button type="button" onClick={checkAvailability} className="admin-btn-secondary">
+          <button type="button" disabled={busy} onClick={checkAvailability} className="admin-btn-secondary">
             Check availability
           </button>
           {availability !== null ? (
@@ -164,8 +173,8 @@ export default function NewReservationPage() {
               {availability ? "Available" : "Not available"}
             </span>
           ) : null}
-          <button type="submit" disabled={createMutation.isPending} className="admin-btn-primary">
-            {createMutation.isPending ? "Creating..." : "Create reservation"}
+          <button type="submit" disabled={busy || createMutation.isPending} className="admin-btn-primary">
+            {busy || createMutation.isPending ? "Creating..." : "Create reservation"}
           </button>
         </div>
       </form>

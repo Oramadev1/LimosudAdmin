@@ -228,8 +228,8 @@ export function deleteCustomerDocument(documentId: number) {
   return withAuth<null>(`/admin/customer-documents/${documentId}`, { method: "DELETE" });
 }
 
-export function getReservations(page = 1) {
-  return withAuth<Paginated<Reservation>>(`/admin/reservations?page=${page}`);
+export function getReservations(page = 1, perPage = 15) {
+  return withAuth<Paginated<Reservation>>(`/admin/reservations?page=${page}&per_page=${perPage}`);
 }
 
 export function getReservationCalendar(start?: string, end?: string) {

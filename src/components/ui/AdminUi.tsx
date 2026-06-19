@@ -105,16 +105,6 @@ export function ErrorMessage({ message }: { message: string }) {
   );
 }
 
-export function StatusBadge({
-  label,
-  className,
-}: {
-  label: string;
-  className: string;
-}) {
-  return <span className={className}>{label}</span>;
-}
-
 export function DetailRow({
   label,
   value,

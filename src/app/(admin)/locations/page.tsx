@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
   createLocation,
@@ -43,7 +44,7 @@ export default function LocationsPage() {
     placeholderData: keepPreviousData,
   });
 
-  const saveMutation = useMutation({
+  const saveMutation = useLockedMutation({
     mutationFn: (payload: Parameters<typeof createLocation>[0] & { id?: number }) => {
       if (payload.id) {
         const { id, ...body } = payload;
@@ -56,7 +57,7 @@ export default function LocationsPage() {
     },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useLockedMutation({
     mutationFn: deleteLocation,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["locations"] });

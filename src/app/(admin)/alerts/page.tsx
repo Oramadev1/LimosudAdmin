@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
   alertAction,
@@ -43,17 +44,17 @@ export default function AlertsPage() {
     queryFn: () => getPendingAlerts(1),
   });
 
-  const createMutation = useMutation({
+  const createMutation = useLockedMutation({
     mutationFn: createAlert,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alerts"] }),
   });
 
-  const generateMutation = useMutation({
+  const generateMutation = useLockedMutation({
     mutationFn: generateAlerts,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alerts"] }),
   });
 
-  const actionMutation = useMutation({
+  const actionMutation = useLockedMutation({
     mutationFn: ({ id, action }: { id: number; action: "seen" | "done" | "ignore" }) =>
       alertAction(id, action),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["alerts"] }),

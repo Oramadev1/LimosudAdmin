@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
   createExpense,
@@ -46,7 +47,7 @@ export default function ExpensesPage() {
     queryFn: () => getExpenseMonthlySummary(),
   });
 
-  const saveMutation = useMutation({
+  const saveMutation = useLockedMutation({
     mutationFn: async (payload: Parameters<typeof createExpense>[0] & { id?: number }) => {
       if (payload.id) {
         const { id, ...body } = payload;
@@ -60,7 +61,7 @@ export default function ExpensesPage() {
     },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useLockedMutation({
     mutationFn: deleteExpense,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["expenses"] }),
   });

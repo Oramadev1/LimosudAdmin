@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
   createMaintenance,
@@ -44,7 +45,7 @@ export default function MaintenancesPage() {
     placeholderData: keepPreviousData,
   });
 
-  const saveMutation = useMutation({
+  const saveMutation = useLockedMutation({
     mutationFn: (payload: Parameters<typeof createMaintenance>[0] & { id?: number }) => {
       if (payload.id) {
         const { id, ...body } = payload;
@@ -55,7 +56,7 @@ export default function MaintenancesPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["maintenances"] }),
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useLockedMutation({
     mutationFn: deleteMaintenance,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["maintenances"] }),
   });

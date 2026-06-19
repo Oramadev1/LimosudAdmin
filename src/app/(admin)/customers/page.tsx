@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
   createCustomer,
@@ -34,7 +35,7 @@ export default function CustomersPage() {
     placeholderData: keepPreviousData,
   });
 
-  const saveMutation = useMutation({
+  const saveMutation = useLockedMutation({
     mutationFn: (payload: Parameters<typeof createCustomer>[0] & { id?: number }) => {
       if (payload.id) {
         const { id, ...body } = payload;
@@ -45,7 +46,7 @@ export default function CustomersPage() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["customers"] }),
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useLockedMutation({
     mutationFn: deleteCustomer,
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["customers"] }),
   });

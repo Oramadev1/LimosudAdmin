@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useRef, useState, type ChangeEvent } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import { AdminImageThumb } from "@/components/ui/AdminImageThumb";
 import {
@@ -50,7 +51,7 @@ export default function VehicleBrandsPage() {
     queryClient.invalidateQueries({ queryKey: queryKeys.lookups });
   };
 
-  const saveMutation = useMutation({
+  const saveMutation = useLockedMutation({
     mutationFn: async (payload: { name: string; slug: string; is_active: boolean; id?: number }) => {
       const response = payload.id
         ? await updateVehicleBrand(payload.id, payload)
@@ -68,12 +69,12 @@ export default function VehicleBrandsPage() {
     },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useLockedMutation({
     mutationFn: deleteVehicleBrand,
     onSuccess: invalidateBrands,
   });
 
-  const deleteImageMutation = useMutation({
+  const deleteImageMutation = useLockedMutation({
     mutationFn: deleteVehicleBrandImage,
     onSuccess: () => {
       invalidateBrands();

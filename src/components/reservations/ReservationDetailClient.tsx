@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
   cancelContract,
@@ -23,26 +24,30 @@ import {
   getReservationStatusBadgeClass,
 } from "@/lib/reservation-status";
 import {
+  canGenerateContract,
   canRecordPayment,
-  getAllowedReservationActions,
+  filterAllowedReservationActions,
   getReservationActionButtonClass,
   getReservationActionLabel,
   getReservationStatusHint,
 } from "@/lib/reservation-workflow";
 import { useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
-import {
-  AdminFormField,
-  DetailRow,
-  ErrorMessage,
-  SectionCard,
-  StatusBadge,
-} from "@/components/ui/AdminUi";
+import { useSubmitLock } from "@/lib/use-submit-lock";
+import { AdminFormField, DetailRow, ErrorMessage, SectionCard } from "@/components/ui/AdminUi";
+import { StatusBadge } from "@/components/ui/StatusBadge";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function ReservationDetailClient({ id }: { id: number }) {
   const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
+  const { runOnce, busy: actionBusy } = useSubmitLock();
   const { data: lookups } = useLookupsQuery();
   const [error, setError] = useState<string | null>(null);
+  const [contractMessage, setContractMessage] = useState<string | null>(null);
+  const [contractAction, setContractAction] = useState<
+    null | "generate" | "load" | "download" | "sign" | "cancel"
+  >(null);
   const [paymentForm, setPaymentForm] = useState({
     payment_method_slug: "cash",
     payment_type_slug: "rental_payment",
@@ -80,13 +85,13 @@ export function ReservationDetailClient({ id }: { id: number }) {
     queryClient.invalidateQueries({ queryKey: ["reservations"] });
   };
 
-  const actionMutation = useMutation({
+  const actionMutation = useLockedMutation({
     mutationFn: (action: "confirm" | "start" | "complete" | "cancel" | "reject" | "reopen") =>
       reservationAction(id, action),
     onSuccess: invalidate,
   });
 
-  const paymentMutation = useMutation({
+  const paymentMutation = useLockedMutation({
     mutationFn: createPayment,
     onSuccess: invalidate,
   });
@@ -129,27 +134,98 @@ export function ReservationDetailClient({ id }: { id: number }) {
   };
 
   const handleGenerateContract = async () => {
-    setError(null);
-    try {
-      await generateContract(id);
-      await refetchContract();
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Contract generation failed.");
-    }
+    await runOnce(async () => {
+      setError(null);
+      setContractMessage(null);
+      setContractAction("generate");
+      try {
+        await generateContract(id);
+        await refetchContract();
+        setContractMessage("Contract generated successfully.");
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Contract generation failed.");
+      } finally {
+        setContractAction(null);
+      }
+    });
+  };
+
+  const handleLoadContract = async () => {
+    await runOnce(async () => {
+      setError(null);
+      setContractMessage(null);
+      setContractAction("load");
+      try {
+        const result = await refetchContract();
+        if (result.data?.data) {
+          setContractMessage(`Loaded contract ${result.data.data.contract_number}.`);
+        } else {
+          setContractMessage("No contract found for this reservation yet.");
+        }
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Failed to load contract.");
+      } finally {
+        setContractAction(null);
+      }
+    });
   };
 
   const handleDownloadContract = async (contractId: number, contractNumber: string) => {
-    try {
-      const blob = await downloadContract(contractId);
-      const url = URL.createObjectURL(blob);
-      const anchor = document.createElement("a");
-      anchor.href = url;
-      anchor.download = `${contractNumber}.pdf`;
-      anchor.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      setError(err instanceof ApiError ? err.message : "Download failed.");
-    }
+    await runOnce(async () => {
+      setError(null);
+      setContractMessage(null);
+      setContractAction("download");
+      try {
+        const blob = await downloadContract(contractId);
+        const url = URL.createObjectURL(blob);
+        const anchor = document.createElement("a");
+        anchor.href = url;
+        anchor.download = `${contractNumber}.pdf`;
+        anchor.click();
+        URL.revokeObjectURL(url);
+        setContractMessage(`Downloaded ${contractNumber}.pdf`);
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Download failed.");
+      } finally {
+        setContractAction(null);
+      }
+    });
+  };
+
+  const handleMarkContractSigned = async (contractId: number) => {
+    await runOnce(async () => {
+      setError(null);
+      setContractMessage(null);
+      setContractAction("sign");
+      try {
+        await markContractSigned(contractId);
+        await refetchContract();
+        setContractMessage("Contract marked as signed.");
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Failed to mark contract as signed.");
+      } finally {
+        setContractAction(null);
+      }
+    });
+  };
+
+  const handleCancelContract = async (contractId: number) => {
+    if (!confirm("Cancel this contract?")) return;
+
+    await runOnce(async () => {
+      setError(null);
+      setContractMessage(null);
+      setContractAction("cancel");
+      try {
+        await cancelContract(contractId);
+        await refetchContract();
+        setContractMessage("Contract cancelled.");
+      } catch (err) {
+        setError(err instanceof ApiError ? err.message : "Failed to cancel contract.");
+      } finally {
+        setContractAction(null);
+      }
+    });
   };
 
   if (isPending) {
@@ -162,9 +238,14 @@ export function ReservationDetailClient({ id }: { id: number }) {
 
   const contract = contractData?.data;
   const statusSlug = reservation.status.slug;
-  const allowedActions = getAllowedReservationActions(statusSlug);
+  const allowedActions = filterAllowedReservationActions(statusSlug, hasPermission);
   const statusHint = getReservationStatusHint(statusSlug);
-  const paymentAllowed = canRecordPayment(statusSlug);
+  const paymentAllowed = canRecordPayment(statusSlug) && hasPermission("payments.manage");
+  const contractAllowed = canGenerateContract(statusSlug);
+  const canManageContracts = hasPermission("contracts.generate");
+  const canViewContracts = hasPermission("contracts.view");
+  const canUpdateContracts = hasPermission("contracts.update");
+  const canDeleteReservation = hasPermission("reservations.delete");
   const pendingAction = actionMutation.isPending ? actionMutation.variables : null;
 
   return (
@@ -214,18 +295,26 @@ export function ReservationDetailClient({ id }: { id: number }) {
               {pendingAction === action ? "Working..." : getReservationActionLabel(action)}
             </button>
           ))}
-          <button
-            type="button"
-            className="admin-btn-danger"
-            onClick={async () => {
-              if (!confirm("Delete reservation permanently?")) return;
-              await deleteReservation(id);
-              window.location.href = "/reservations";
-            }}
-          >
-            Delete
-          </button>
+          {canDeleteReservation ? (
+            <button
+              type="button"
+              className="admin-btn-danger"
+              disabled={actionBusy || actionMutation.isPending}
+              onClick={() => {
+                void runOnce(async () => {
+                  if (!confirm("Delete reservation permanently?")) return;
+                  await deleteReservation(id);
+                  window.location.href = "/reservations";
+                });
+              }}
+            >
+              Delete
+            </button>
+          ) : null}
         </div>
+        {allowedActions.length === 0 && !canDeleteReservation ? (
+          <p className="mt-3 text-sm text-gray-500">No actions available for this status or your role.</p>
+        ) : null}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
@@ -327,49 +416,88 @@ export function ReservationDetailClient({ id }: { id: number }) {
             {paymentMutation.isPending ? "Saving..." : "Add payment"}
           </button>
         </form>
+      ) : canRecordPayment(statusSlug) && !hasPermission("payments.manage") ? (
+        <div className="admin-card mt-4 p-6 text-sm text-gray-500">
+          You do not have permission to record payments.
+        </div>
       ) : (
         <div className="admin-card mt-4 p-6 text-sm text-gray-500">
           Payments cannot be recorded for cancelled or rejected reservations. Use <strong>Reopen as pending</strong> first if this was a mistake.
         </div>
       )}
 
+      {(canManageContracts || canViewContracts) ? (
       <SectionCard title="Contract" className="mt-4">
+        {contractAction ? (
+          <p className="mb-3 text-sm font-medium text-[#3563E9]">
+            {contractAction === "generate" && "Generating contract..."}
+            {contractAction === "load" && "Loading contract..."}
+            {contractAction === "download" && "Preparing PDF download..."}
+            {contractAction === "sign" && "Marking contract as signed..."}
+            {contractAction === "cancel" && "Cancelling contract..."}
+          </p>
+        ) : null}
+        {contractMessage ? (
+          <p className="mb-3 text-sm text-green-700">{contractMessage}</p>
+        ) : null}
+        {!contractAllowed ? (
+          <p className="mb-3 text-sm text-gray-500">
+            Contracts can be generated after the reservation is confirmed.
+          </p>
+        ) : null}
         <div className="flex flex-wrap gap-3">
-          <button type="button" onClick={handleGenerateContract} className="admin-btn-primary">
-            Generate contract
-          </button>
-          <button type="button" onClick={() => refetchContract()} className="admin-btn-secondary">
-            Load contract
-          </button>
+          {canManageContracts && contractAllowed ? (
+            <button
+              type="button"
+              onClick={handleGenerateContract}
+              disabled={contractAction !== null}
+              className="admin-btn-primary"
+            >
+              {contractAction === "generate" ? "Generating..." : "Generate contract"}
+            </button>
+          ) : null}
+          {canViewContracts ? (
+            <button
+              type="button"
+              onClick={handleLoadContract}
+              disabled={contractAction !== null}
+              className="admin-btn-secondary"
+            >
+              {contractAction === "load" ? "Loading..." : "Load contract"}
+            </button>
+          ) : null}
           {contract ? (
             <>
-              <button
-                type="button"
-                onClick={() => handleDownloadContract(contract.id, contract.contract_number)}
-                className="admin-btn-secondary"
-              >
-                Download PDF
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await markContractSigned(contract.id);
-                  await refetchContract();
-                }}
-                className="admin-btn-success"
-              >
-                Mark signed
-              </button>
-              <button
-                type="button"
-                onClick={async () => {
-                  await cancelContract(contract.id);
-                  await refetchContract();
-                }}
-                className="admin-btn-danger"
-              >
-                Cancel contract
-              </button>
+              {canViewContracts ? (
+                <button
+                  type="button"
+                  onClick={() => handleDownloadContract(contract.id, contract.contract_number)}
+                  disabled={contractAction !== null}
+                  className="admin-btn-secondary"
+                >
+                  {contractAction === "download" ? "Downloading..." : "Download PDF"}
+                </button>
+              ) : null}
+              {canUpdateContracts ? (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => handleMarkContractSigned(contract.id)}
+                    disabled={contractAction !== null}
+                    className="admin-btn-success"
+                  >
+                    {contractAction === "sign" ? "Saving..." : "Mark signed"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleCancelContract(contract.id)}
+                    disabled={contractAction !== null}
+                    className="admin-btn-danger"
+                  >
+                    {contractAction === "cancel" ? "Cancelling..." : "Cancel contract"}
+                  </button>
+                </>
+              ) : null}
               <p className="w-full text-sm text-gray-600">
                 {contract.contract_number} · {contract.status.name}
               </p>
@@ -377,6 +505,7 @@ export function ReservationDetailClient({ id }: { id: number }) {
           ) : null}
         </div>
       </SectionCard>
+      ) : null}
     </div>
   );
 }

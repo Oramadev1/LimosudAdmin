@@ -16,8 +16,9 @@ import {
   Receipt,
 } from "lucide-react";
 
+import { BrandLogo } from "@/components/ui/BrandLogo";
+import { useSubmitLock } from "@/lib/use-submit-lock";
 import { useAuth } from "@/contexts/AuthContext";
-import { siteConfig } from "@/config/site";
 
 const menuItems = [
   { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard, permission: "dashboard.view" },
@@ -36,20 +37,15 @@ const menuItems = [
 export function AdminSidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const { user, logout, hasPermission } = useAuth();
+  const { runOnce, busy: loggingOut } = useSubmitLock();
 
   return (
-    <aside className="flex min-h-screen w-[260px] shrink-0 flex-col justify-between border-r border-gray-100 bg-white px-5 py-8">
+    <aside className="flex h-full w-full flex-col justify-between overflow-y-auto border-r border-gray-100 bg-white px-5 py-8">
       <div className="flex flex-col gap-8">
         <div className="flex items-center justify-between px-1">
           <div>
-            <Link
-              href="/dashboard"
-              onClick={onClose}
-              className="text-xl font-bold tracking-wide text-[#3563E9]"
-            >
-              {siteConfig.brand}
-            </Link>
-            <p className="mt-1 text-xs text-gray-400">Admin panel</p>
+            <BrandLogo href="/dashboard" onClick={onClose} height={40} />
+            <p className="mt-1 px-1 text-xs text-gray-400">Admin panel</p>
           </div>
           {onClose ? (
             <button
@@ -105,8 +101,9 @@ export function AdminSidebar({ onClose }: { onClose?: () => void }) {
         </div>
         <button
           type="button"
-          onClick={() => logout()}
-          className="flex w-full items-center gap-3 rounded-[8px] px-4 py-3 text-sm font-semibold text-gray-500 transition-colors hover:bg-red-50 hover:text-red-500"
+          disabled={loggingOut}
+          onClick={() => void runOnce(() => logout())}
+          className="flex w-full items-center gap-3 rounded-[8px] px-4 py-3 text-sm font-semibold text-gray-500 transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-wait disabled:opacity-70"
         >
           <LogOut size={18} />
           Log out

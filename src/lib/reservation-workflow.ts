@@ -49,6 +49,32 @@ export function canRecordPayment(statusSlug: string): boolean {
   return ["pending", "confirmed", "in_progress", "completed"].includes(statusSlug);
 }
 
+export function canGenerateContract(statusSlug: string): boolean {
+  return ["confirmed", "in_progress", "completed"].includes(statusSlug);
+}
+
+const RESERVATION_ACTION_PERMISSIONS: Record<ReservationAction, string> = {
+  confirm: "reservations.confirm",
+  start: "reservations.start",
+  complete: "reservations.complete",
+  cancel: "reservations.cancel",
+  reject: "reservations.reject",
+  reopen: "reservations.update",
+};
+
+export function getReservationActionPermission(action: ReservationAction): string {
+  return RESERVATION_ACTION_PERMISSIONS[action];
+}
+
+export function filterAllowedReservationActions(
+  statusSlug: string,
+  hasPermission: (slug: string) => boolean,
+): ReservationAction[] {
+  return getAllowedReservationActions(statusSlug).filter((action) =>
+    hasPermission(getReservationActionPermission(action)),
+  );
+}
+
 export function isTerminalReservationStatus(statusSlug: string): boolean {
   return ["completed", "cancelled", "rejected"].includes(statusSlug);
 }

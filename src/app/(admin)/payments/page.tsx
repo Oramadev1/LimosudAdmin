@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useState } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
   cancelPayment,
@@ -11,6 +12,7 @@ import {
 } from "@/lib/api/admin";
 import { ApiError, isValidationError } from "@/lib/api/client";
 import { formatCurrency, formatDateTime } from "@/lib/format";
+import { useAuth } from "@/contexts/AuthContext";
 import { canRecordPayment } from "@/lib/reservation-workflow";
 import { useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
@@ -18,6 +20,7 @@ import { EmptyState, ErrorMessage, PageHeader, Pagination } from "@/components/u
 
 export default function PaymentsPage() {
   const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
   const { data: lookups } = useLookupsQuery();
   const [page, setPage] = useState(1);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -39,18 +42,24 @@ export default function PaymentsPage() {
   });
 
   const { data: reservations } = useQuery({
-    queryKey: queryKeys.reservations(1),
-    queryFn: () => getReservations(1),
+    queryKey: [...queryKeys.reservations(1), "payable"],
+    queryFn: () => getReservations(1, 100),
   });
 
-  const createMutation = useMutation({
+  const createMutation = useLockedMutation({
     mutationFn: createPayment,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["payments"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["reservations"] });
+    },
   });
 
-  const cancelMutation = useMutation({
+  const cancelMutation = useLockedMutation({
     mutationFn: cancelPayment,
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["payments"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["payments"] });
+      queryClient.invalidateQueries({ queryKey: ["reservations"] });
+    },
   });
 
   const payments = data?.data ?? [];
@@ -84,6 +93,8 @@ export default function PaymentsPage() {
   const loadError =
     error instanceof ApiError ? error.message : error ? "Failed to load payments." : null;
 
+  const canManagePayments = hasPermission("payments.manage");
+
   return (
     <div>
       <PageHeader
@@ -91,6 +102,7 @@ export default function PaymentsPage() {
         description="Record offline payments (cash, bank transfer, etc.)."
       />
 
+      {canManagePayments ? (
       <form onSubmit={handleSubmit} className="admin-card mb-6 grid gap-4 p-6 md:grid-cols-2">
         <h2 className="md:col-span-2 text-lg font-bold">Record payment</h2>
         <select
@@ -143,6 +155,11 @@ export default function PaymentsPage() {
           {createMutation.isPending ? "Saving..." : "Add payment"}
         </button>
       </form>
+      ) : (
+        <div className="admin-card mb-6 p-6 text-sm text-gray-500">
+          You do not have permission to record payments.
+        </div>
+      )}
 
       {submitError ? <ErrorMessage message={submitError} /> : null}
       {loadError ? <ErrorMessage message={loadError} /> : null}
@@ -173,16 +190,20 @@ export default function PaymentsPage() {
                   <td className="px-4 py-3">{payment.reservation?.reservation_number ?? "—"}</td>
                   <td className="px-4 py-3">{formatDateTime(payment.payment_date)}</td>
                   <td className="px-4 py-3">
-                    <button
-                      type="button"
-                      className="text-red-500 hover:underline"
-                      onClick={async () => {
-                        if (!confirm("Cancel this payment?")) return;
-                        await cancelMutation.mutateAsync(payment.id);
-                      }}
-                    >
-                      Cancel
-                    </button>
+                    {canManagePayments && payment.payment_status.slug !== "cancelled" ? (
+                      <button
+                        type="button"
+                        className="text-red-500 hover:underline"
+                        onClick={async () => {
+                          if (!confirm("Cancel this payment?")) return;
+                          await cancelMutation.mutateAsync(payment.id);
+                        }}
+                      >
+                        Cancel
+                      </button>
+                    ) : (
+                      "—"
+                    )}
                   </td>
                 </tr>
               ))}

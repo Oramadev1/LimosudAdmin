@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
   AdminFormField,
@@ -38,7 +39,7 @@ export default function VehicleCategoriesPage() {
     placeholderData: keepPreviousData,
   });
 
-  const saveMutation = useMutation({
+  const saveMutation = useLockedMutation({
     mutationFn: (payload: {
       name: string;
       slug: string;
@@ -59,7 +60,7 @@ export default function VehicleCategoriesPage() {
     },
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useLockedMutation({
     mutationFn: deleteVehicleCategory,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicle-categories"] });

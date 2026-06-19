@@ -1,7 +1,8 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
   deleteVehiclePhoto,
@@ -61,7 +62,7 @@ export function VehiclePhotoManager({
     queryClient.invalidateQueries({ queryKey: ["vehicles"] });
   };
 
-  const uploadMutation = useMutation({
+  const uploadMutation = useLockedMutation({
     mutationFn: (files: File[]) =>
       uploadVehiclePhotos(vehicleId!, files, {
         is_primary: photos.length === 0 && pendingPhotos.length === files.length,
@@ -73,12 +74,12 @@ export function VehiclePhotoManager({
     },
   });
 
-  const primaryMutation = useMutation({
+  const primaryMutation = useLockedMutation({
     mutationFn: (photoId: number) => updateVehiclePhoto(photoId, { is_primary: true }),
     onSuccess: invalidate,
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useLockedMutation({
     mutationFn: deleteVehiclePhoto,
     onSuccess: invalidate,
   });

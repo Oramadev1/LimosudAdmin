@@ -4,6 +4,7 @@ import { FormEvent, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import { login } from "@/lib/api/auth";
+import { useSubmitLock } from "@/lib/use-submit-lock";
 import { ApiError, isValidationError } from "@/lib/api/client";
 import { useAuth } from "@/contexts/AuthContext";
 import { siteConfig } from "@/config/site";
@@ -15,34 +16,34 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
+  const { runOnce, busy } = useSubmitLock();
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    setLoading(true);
-    setError(null);
-    setFieldErrors({});
 
-    try {
-      const response = await login(email, password);
-      setSession(response.access_token, response.user);
-      router.push("/dashboard");
-    } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
+    await runOnce(async () => {
+      setError(null);
+      setFieldErrors({});
 
-      if (isValidationError(body)) {
-        const mapped: Record<string, string> = {};
-        for (const [key, messages] of Object.entries(body.errors)) {
-          mapped[key] = messages[0];
+      try {
+        const response = await login(email, password);
+        setSession(response.access_token, response.user);
+        router.push("/dashboard");
+      } catch (err) {
+        const body = err instanceof ApiError ? err.body : err;
+
+        if (isValidationError(body)) {
+          const mapped: Record<string, string> = {};
+          for (const [key, messages] of Object.entries(body.errors)) {
+            mapped[key] = messages[0];
+          }
+          setFieldErrors(mapped);
+          setError("Please correct the validation errors.");
+        } else {
+          setError("Invalid credentials or server error.");
         }
-        setFieldErrors(mapped);
-        setError("Please correct the validation errors.");
-      } else {
-        setError("Invalid credentials or server error.");
       }
-    } finally {
-      setLoading(false);
-    }
+    });
   };
 
   return (
@@ -87,8 +88,8 @@ export function LoginForm() {
         <p className="rounded-[8px] bg-red-50 px-3 py-2 text-sm text-red-700">{error}</p>
       ) : null}
 
-      <button type="submit" disabled={loading} className="admin-btn-primary w-full">
-        {loading ? "Signing in..." : "Sign in"}
+      <button type="submit" disabled={busy} className="admin-btn-primary w-full">
+        {busy ? "Signing in..." : "Sign in"}
       </button>
 
       <p className="text-center text-xs text-gray-400">

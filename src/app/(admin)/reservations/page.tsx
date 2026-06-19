@@ -12,13 +12,8 @@ import {
   getReservationStatusBadgeClass,
 } from "@/lib/reservation-status";
 import { queryKeys } from "@/lib/query/keys";
-import {
-  EmptyState,
-  ErrorMessage,
-  PageHeader,
-  Pagination,
-  StatusBadge,
-} from "@/components/ui/AdminUi";
+import { EmptyState, ErrorMessage, PageHeader, Pagination } from "@/components/ui/AdminUi";
+import { StatusBadge } from "@/components/ui/StatusBadge";
 
 const STATUS_FILTERS = [
   { slug: "all", label: "All" },

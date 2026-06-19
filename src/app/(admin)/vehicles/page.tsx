@@ -2,13 +2,17 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { keepPreviousData, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import { AdminImageThumb } from "@/components/ui/AdminImageThumb";
-import { deleteVehicle, getVehicles } from "@/lib/api/admin";
+import { VehicleStatusSelect } from "@/components/vehicles/VehicleStatusSelect";
+import { useAuth } from "@/contexts/AuthContext";
+import { deleteVehicle, getVehicles, updateVehicle } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { formatCurrency } from "@/lib/format";
 import { getVehiclePrimaryPhotoUrl } from "@/lib/images";
+import { useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import {
   EmptyState,
@@ -19,6 +23,9 @@ import {
 
 export default function VehiclesPageClient() {
   const queryClient = useQueryClient();
+  const { hasPermission } = useAuth();
+  const canUpdateVehicles = hasPermission("vehicles.update");
+  const { data: lookups } = useLookupsQuery();
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
 
@@ -28,12 +35,29 @@ export default function VehiclesPageClient() {
     placeholderData: keepPreviousData,
   });
 
-  const deleteMutation = useMutation({
+  const deleteMutation = useLockedMutation({
     mutationFn: deleteVehicle,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
     },
   });
+
+  const statusMutation = useLockedMutation({
+    mutationFn: ({ id, status_slug }: { id: number; status_slug: string }) =>
+      updateVehicle(id, { status_slug }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+    },
+  });
+
+  const handleStatusChange = async (vehicleId: number, statusSlug: string) => {
+    try {
+      await statusMutation.mutateAsync({ id: vehicleId, status_slug: statusSlug });
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Failed to update vehicle status.");
+      throw err;
+    }
+  };
 
   const vehicles = data?.data ?? [];
   const lastPage = data?.meta.last_page ?? 1;
@@ -133,7 +157,19 @@ export default function VehiclesPageClient() {
                       </div>
                     </td>
                     <td className="px-4 py-3">{vehicle.plate_number}</td>
-                    <td className="px-4 py-3">{vehicle.status.name}</td>
+                    <td className="px-4 py-3">
+                      {canUpdateVehicles ? (
+                        <VehicleStatusSelect
+                          vehicleId={vehicle.id}
+                          currentSlug={vehicle.status.slug}
+                          currentName={vehicle.status.name}
+                          statuses={lookups?.vehicle_statuses ?? []}
+                          onChange={handleStatusChange}
+                        />
+                      ) : (
+                        vehicle.status.name
+                      )}
+                    </td>
                     <td className="px-4 py-3">{formatCurrency(vehicle.daily_price)}</td>
                     <td className="px-4 py-3">{vehicle.is_active ? "Yes" : "No"}</td>
                     <td className="px-4 py-3">

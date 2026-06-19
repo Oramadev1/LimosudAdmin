@@ -1,7 +1,8 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useLockedMutation } from "@/lib/use-locked-mutation";
 import { useRouter } from "next/navigation";
 
 import {
@@ -13,6 +14,7 @@ import {
 import { ApiError, isValidationError } from "@/lib/api/client";
 import { slugify } from "@/lib/format";
 import { storageUrl } from "@/lib/images";
+import { useSubmitLock } from "@/lib/use-submit-lock";
 import { useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { CreateVehiclePayload } from "@/types/api";
@@ -58,7 +60,7 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
   const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [saving, setSaving] = useState(false);
+  const { runOnce, busy: saving } = useSubmitLock();
 
   const { data: lookups, error: lookupsError } = useLookupsQuery();
 
@@ -72,7 +74,7 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
     enabled: Boolean(vehicleId),
   });
 
-  const updateMutation = useMutation({
+  const updateMutation = useLockedMutation({
     mutationFn: (payload: CreateVehiclePayload) => updateVehicle(vehicleId!, payload),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["vehicles"] });
@@ -186,46 +188,45 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
       return;
     }
 
-    setError(null);
-    setFieldErrors({});
-    setSaving(true);
+    await runOnce(async () => {
+      setError(null);
+      setFieldErrors({});
 
-    try {
-      const payload = buildPayload();
+      try {
+        const payload = buildPayload();
 
-      if (vehicleId) {
-        await updateMutation.mutateAsync(payload);
-        if (pendingPhotos.length > 0) {
-          await uploadVehiclePhotos(vehicleId, pendingPhotos, {
-            is_primary: (vehicleResponse?.data.photos?.length ?? 0) === 0,
-          });
-          queryClient.invalidateQueries({ queryKey: queryKeys.vehicle(vehicleId) });
+        if (vehicleId) {
+          await updateMutation.mutateAsync(payload);
+          if (pendingPhotos.length > 0) {
+            await uploadVehiclePhotos(vehicleId, pendingPhotos, {
+              is_primary: (vehicleResponse?.data.photos?.length ?? 0) === 0,
+            });
+            queryClient.invalidateQueries({ queryKey: queryKeys.vehicle(vehicleId) });
+          }
+          router.push("/vehicles");
+        } else {
+          const response = await createVehicle(payload);
+          if (pendingPhotos.length > 0) {
+            await uploadVehiclePhotos(response.data.id, pendingPhotos, { is_primary: true });
+          }
+          queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+          router.push("/vehicles");
         }
-        router.push("/vehicles");
-      } else {
-        const response = await createVehicle(payload);
-        if (pendingPhotos.length > 0) {
-          await uploadVehiclePhotos(response.data.id, pendingPhotos, { is_primary: true });
+      } catch (err) {
+        const body = err instanceof ApiError ? err.body : err;
+        if (isValidationError(body)) {
+          const mapped: Record<string, string> = {};
+          for (const [key, messages] of Object.entries(body.errors)) {
+            mapped[key] = messages[0];
+          }
+          setFieldErrors(mapped);
+          setStep(1);
+          setError("Please correct the validation errors on step 1.");
+        } else {
+          setError(err instanceof ApiError ? err.message : "Save failed.");
         }
-        queryClient.invalidateQueries({ queryKey: ["vehicles"] });
-        router.push("/vehicles");
       }
-    } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-      if (isValidationError(body)) {
-        const mapped: Record<string, string> = {};
-        for (const [key, messages] of Object.entries(body.errors)) {
-          mapped[key] = messages[0];
-        }
-        setFieldErrors(mapped);
-        setStep(1);
-        setError("Please correct the validation errors on step 1.");
-      } else {
-        setError(err instanceof ApiError ? err.message : "Save failed.");
-      }
-    } finally {
-      setSaving(false);
-    }
+    });
   };
 
   const loadError =
