@@ -1,7 +1,14 @@
 import type { NextConfig } from "next";
 
-const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000/api";
-const apiOrigin = new URL(apiUrl).origin;
+const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? "https://api.limosudcars.com/api";
+const apiOrigin = new URL(apiUrl);
+
+const storageRemotePattern = {
+  protocol: apiOrigin.protocol.replace(":", "") as "http" | "https",
+  hostname: apiOrigin.hostname,
+  ...(apiOrigin.port ? { port: apiOrigin.port } : {}),
+  pathname: "/storage/**",
+} as const;
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
@@ -11,23 +18,10 @@ const nextConfig: NextConfig = {
   },
   images: {
     formats: ["image/avif", "image/webp"],
-    remotePatterns: [
-      {
-        protocol: "http",
-        hostname: "127.0.0.1",
-        port: "8000",
-        pathname: "/storage/**",
-      },
-      {
-        protocol: "http",
-        hostname: "localhost",
-        port: "8000",
-        pathname: "/storage/**",
-      },
-    ],
+    remotePatterns: [storageRemotePattern],
   },
   env: {
-    NEXT_PUBLIC_API_ORIGIN: apiOrigin,
+    NEXT_PUBLIC_API_ORIGIN: apiOrigin.origin,
   },
 };
 
