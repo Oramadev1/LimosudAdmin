@@ -1,4 +1,5 @@
 import { siteConfig } from "@/config/site";
+import { resolveApiUrl } from "@/lib/api/base-url";
 import type { ApiValidationError } from "@/types/api";
 
 export class ApiError extends Error {
@@ -39,7 +40,7 @@ export async function apiFetch<T>(
   init: ApiFetchOptions = {},
 ): Promise<T> {
   const { token, ...requestInit } = init;
-  const url = `${siteConfig.apiUrl}${path}`;
+  const url = resolveApiUrl(path);
 
   const isDynamic =
     requestInit.cache === "no-store" ||

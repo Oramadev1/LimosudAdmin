@@ -2,7 +2,12 @@ import { siteConfig } from "@/config/site";
 import type { Vehicle, VehiclePhoto } from "@/types/api";
 
 export function getStorageBaseUrl(): string {
-  return siteConfig.apiUrl.replace(/\/api\/?$/, "");
+  const fromEnv = process.env.NEXT_PUBLIC_API_ORIGIN;
+  if (fromEnv) {
+    return fromEnv.replace(/\/$/, "");
+  }
+
+  return siteConfig.apiUrl.replace(/\/api\/?$/, "") || "https://api.limosudcars.com";
 }
 
 export function storageUrl(path: string): string {
