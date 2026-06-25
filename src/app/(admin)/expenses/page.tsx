@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
@@ -17,22 +17,33 @@ import { formatCurrency, formatDateTime } from "@/lib/format";
 import { useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Expense } from "@/types/api";
-import { EmptyState, ErrorMessage, PageHeader, Pagination } from "@/components/ui/AdminUi";
+import {
+  AdminCollapsibleFormCard,
+  EmptyState,
+  ErrorMessage,
+  PageHeader,
+  Pagination,
+  scrollToAdminForm,
+} from "@/components/ui/AdminUi";
+
+const emptyForm = {
+  vehicle_id: "",
+  expense_category_slug: "fuel",
+  amount: "",
+  expense_date: new Date().toISOString().slice(0, 10),
+  description: "",
+};
 
 export default function ExpensesPage() {
   const queryClient = useQueryClient();
+  const formRef = useRef<HTMLDivElement>(null);
   const { data: lookups } = useLookupsQuery();
   const [page, setPage] = useState(1);
+  const [showForm, setShowForm] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
-  const [form, setForm] = useState({
-    vehicle_id: "",
-    expense_category_slug: "fuel",
-    amount: "",
-    expense_date: new Date().toISOString().slice(0, 10),
-    description: "",
-  });
+  const [form, setForm] = useState(emptyForm);
 
   const { data: vehicles } = useQuery({ queryKey: queryKeys.vehicles(1), queryFn: () => getVehicles(1) });
 
@@ -57,7 +68,7 @@ export default function ExpensesPage() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["expenses"] });
-      setInvoiceFile(null);
+      resetForm();
     },
   });
 
@@ -68,6 +79,38 @@ export default function ExpensesPage() {
 
   const expenses = data?.data ?? [];
   const lastPage = data?.meta.last_page ?? 1;
+
+  const resetForm = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setInvoiceFile(null);
+    setShowForm(false);
+    setSubmitError(null);
+  };
+
+  const openCreateForm = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setInvoiceFile(null);
+    setSubmitError(null);
+    setShowForm(true);
+    scrollToAdminForm(formRef);
+  };
+
+  const startEdit = (expense: Expense) => {
+    setEditingId(expense.id);
+    setForm({
+      vehicle_id: expense.vehicle ? String(expense.vehicle.id) : "",
+      expense_category_slug: expense.expense_category.slug,
+      amount: expense.amount,
+      expense_date: expense.expense_date.slice(0, 10),
+      description: expense.description ?? "",
+    });
+    setInvoiceFile(null);
+    setSubmitError(null);
+    setShowForm(true);
+    scrollToAdminForm(formRef);
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -80,14 +123,6 @@ export default function ExpensesPage() {
         expense_date: form.expense_date,
         description: form.description || null,
         ...(editingId ? { id: editingId } : {}),
-      });
-      setEditingId(null);
-      setForm({
-        vehicle_id: "",
-        expense_category_slug: "fuel",
-        amount: "",
-        expense_date: new Date().toISOString().slice(0, 10),
-        description: "",
       });
     } catch (err) {
       const body = err instanceof ApiError ? err.body : err;
@@ -109,45 +144,21 @@ export default function ExpensesPage() {
             ? `This month: ${formatCurrency(summary.total_amount)} (${summary.expense_count} records)`
             : "Track fleet and business expenses."
         }
+        actionLabel="Add expense"
+        onActionClick={openCreateForm}
       />
 
-      <form onSubmit={handleSubmit} className="admin-card mb-6 grid gap-4 p-6 md:grid-cols-2">
-        <h2 className="md:col-span-2 text-lg font-bold">{editingId ? "Edit expense" : "Add expense"}</h2>
-        <select
-          value={form.vehicle_id}
-          onChange={(e) => setForm((c) => ({ ...c, vehicle_id: e.target.value }))}
-          className="admin-input"
-        >
-          <option value="">No vehicle (general expense)</option>
-          {vehicles?.data.map((v) => (
-            <option key={v.id} value={v.id}>{v.name}</option>
-          ))}
-        </select>
-        <select
-          value={form.expense_category_slug}
-          onChange={(e) => setForm((c) => ({ ...c, expense_category_slug: e.target.value }))}
-          className="admin-input"
-        >
-          {lookups?.expense_categories.map((item) => (
-            <option key={item.slug} value={item.slug}>{item.name}</option>
-          ))}
-        </select>
-        <input type="number" placeholder="Amount" value={form.amount} onChange={(e) => setForm((c) => ({ ...c, amount: e.target.value }))} className="admin-input" required />
-        <input type="date" value={form.expense_date} onChange={(e) => setForm((c) => ({ ...c, expense_date: e.target.value }))} className="admin-input" required />
-        <input placeholder="Description" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} className="admin-input md:col-span-2" />
-        <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={(e) => setInvoiceFile(e.target.files?.[0] ?? null)} className="md:col-span-2 text-sm" />
-        <button type="submit" disabled={saveMutation.isPending} className="admin-btn-primary md:col-span-2">
-          {saveMutation.isPending ? "Saving..." : editingId ? "Update" : "Create"}
-        </button>
-      </form>
-
-      {submitError ? <ErrorMessage message={submitError} /> : null}
       {loadError ? <ErrorMessage message={loadError} /> : null}
 
       {isPending ? (
         <div className="admin-card p-6 text-sm text-gray-500">Loading...</div>
       ) : expenses.length === 0 ? (
-        <EmptyState title="No expenses" description="Add expenses to track fleet costs." />
+        <EmptyState
+          title="No expenses"
+          description="Add expenses to track fleet costs."
+          actionLabel="Add expense"
+          onAction={openCreateForm}
+        />
       ) : (
         <div className={`admin-card overflow-x-auto ${isFetching ? "opacity-80" : ""}`}>
           <table className="admin-table w-full">
@@ -174,16 +185,7 @@ export default function ExpensesPage() {
                       <button
                         type="button"
                         className="text-[#3563E9] hover:underline"
-                        onClick={() => {
-                          setEditingId(expense.id);
-                          setForm({
-                            vehicle_id: expense.vehicle ? String(expense.vehicle.id) : "",
-                            expense_category_slug: expense.expense_category.slug,
-                            amount: expense.amount,
-                            expense_date: expense.expense_date.slice(0, 10),
-                            description: expense.description ?? "",
-                          });
-                        }}
+                        onClick={() => startEdit(expense)}
                       >
                         Edit
                       </button>
@@ -193,6 +195,7 @@ export default function ExpensesPage() {
                         onClick={async () => {
                           if (!confirm("Delete expense?")) return;
                           await deleteMutation.mutateAsync(expense.id);
+                          if (editingId === expense.id) resetForm();
                         }}
                       >
                         Delete
@@ -208,6 +211,47 @@ export default function ExpensesPage() {
           </div>
         </div>
       )}
+
+      <AdminCollapsibleFormCard
+        open={showForm}
+        title={editingId ? "Edit expense" : "Add expense"}
+        formRef={formRef}
+      >
+        <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+          {submitError ? <div className="md:col-span-2"><ErrorMessage message={submitError} /></div> : null}
+          <select
+            value={form.vehicle_id}
+            onChange={(e) => setForm((c) => ({ ...c, vehicle_id: e.target.value }))}
+            className="admin-input"
+          >
+            <option value="">No vehicle (general expense)</option>
+            {vehicles?.data.map((v) => (
+              <option key={v.id} value={v.id}>{v.name}</option>
+            ))}
+          </select>
+          <select
+            value={form.expense_category_slug}
+            onChange={(e) => setForm((c) => ({ ...c, expense_category_slug: e.target.value }))}
+            className="admin-input"
+          >
+            {lookups?.expense_categories.map((item) => (
+              <option key={item.slug} value={item.slug}>{item.name}</option>
+            ))}
+          </select>
+          <input type="number" placeholder="Amount" value={form.amount} onChange={(e) => setForm((c) => ({ ...c, amount: e.target.value }))} className="admin-input" required />
+          <input type="date" value={form.expense_date} onChange={(e) => setForm((c) => ({ ...c, expense_date: e.target.value }))} className="admin-input" required />
+          <input placeholder="Description" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} className="admin-input md:col-span-2" />
+          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={(e) => setInvoiceFile(e.target.files?.[0] ?? null)} className="md:col-span-2 text-sm" />
+          <div className="md:col-span-2 flex gap-3">
+            <button type="submit" disabled={saveMutation.isPending} className="admin-btn-primary">
+              {saveMutation.isPending ? "Saving..." : editingId ? "Update" : "Create"}
+            </button>
+            <button type="button" className="admin-btn-secondary" onClick={resetForm}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </AdminCollapsibleFormCard>
     </div>
   );
 }

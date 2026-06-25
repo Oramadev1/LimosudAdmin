@@ -6,11 +6,13 @@ import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import { AdminImageThumb } from "@/components/ui/AdminImageThumb";
 import {
+  AdminCollapsibleFormCard,
   AdminFormField,
   EmptyState,
   ErrorMessage,
   PageHeader,
   Pagination,
+  scrollToAdminForm,
 } from "@/components/ui/AdminUi";
 import {
   createVehicleBrand,
@@ -104,7 +106,7 @@ export default function VehicleBrandsPage() {
   const openCreateForm = () => {
     resetForm();
     setShowForm(true);
-    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    scrollToAdminForm(formRef);
   };
 
   const handleLogoChange = (event: ChangeEvent<HTMLInputElement>) => {
@@ -129,7 +131,7 @@ export default function VehicleBrandsPage() {
     setShowForm(true);
     setSubmitError(null);
     if (logoInputRef.current) logoInputRef.current.value = "";
-    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    scrollToAdminForm(formRef);
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -162,84 +164,6 @@ export default function VehicleBrandsPage() {
         onActionClick={openCreateForm}
       />
 
-      {showForm ? (
-        <div ref={formRef} className="admin-card mb-6 p-6">
-          <form onSubmit={handleSubmit} className="max-w-xl space-y-4">
-              <AdminFormField label="Brand name" hint="Example: Toyota, BMW, Mercedes.">
-                <input
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Enter brand name"
-                  className="admin-input"
-                  required
-                />
-              </AdminFormField>
-
-              <label className="group block max-w-sm cursor-pointer">
-                <div className="flex h-36 w-full items-center justify-center overflow-hidden rounded-[8px] border border-dashed border-gray-200 bg-gray-50 p-3 transition-colors group-hover:border-[#3563E9] group-hover:bg-blue-50/40">
-                  {previewSrc ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={previewSrc}
-                      alt={name || "Brand logo preview"}
-                      className="max-h-full max-w-full object-contain"
-                    />
-                  ) : (
-                    <div className="text-center">
-                      <p className="text-sm font-medium text-gray-700">Upload logo</p>
-                      <p className="mt-1 text-xs text-gray-400">PNG, JPG, or WEBP</p>
-                    </div>
-                  )}
-                </div>
-                <p className="mt-2 text-xs text-gray-400">
-                  {logoFile ? logoFile.name : "Click the box above to choose a logo"}
-                </p>
-                <input
-                  ref={logoInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handleLogoChange}
-                  className="sr-only"
-                />
-              </label>
-
-              {name ? (
-                <AdminFormField label="URL slug" hint="Generated automatically from the brand name.">
-                  <input value={slugPreview} readOnly className="admin-input bg-gray-50 text-gray-500" />
-                </AdminFormField>
-              ) : null}
-
-              <label className="flex items-center gap-2 text-sm text-gray-700">
-                <input
-                  type="checkbox"
-                  checked={isActive}
-                  onChange={(event) => setIsActive(event.target.checked)}
-                />
-                Active on the site
-              </label>
-
-              <div className="flex flex-wrap gap-3 border-t border-gray-100 pt-4">
-                <button type="submit" disabled={saveMutation.isPending} className="admin-btn-primary">
-                  {saveMutation.isPending ? "Saving..." : editingId ? "Save changes" : "Create brand"}
-                </button>
-                {editingId && editingBrand?.image_path ? (
-                  <button
-                    type="button"
-                    className="admin-btn-secondary text-red-500"
-                    onClick={() => deleteImageMutation.mutate(editingBrand.id)}
-                  >
-                    Remove logo
-                  </button>
-                ) : null}
-                <button type="button" className="admin-btn-secondary" onClick={resetForm}>
-                  Cancel
-                </button>
-              </div>
-          </form>
-        </div>
-      ) : null}
-
-      {submitError ? <div className="mb-4"><ErrorMessage message={submitError} /></div> : null}
       {loadError ? <div className="mb-4"><ErrorMessage message={loadError} /></div> : null}
 
       {isPending ? (
@@ -322,6 +246,86 @@ export default function VehicleBrandsPage() {
           </div>
         </div>
       )}
+
+      <AdminCollapsibleFormCard
+        open={showForm}
+        title={editingId ? "Edit brand" : "Add brand"}
+        formRef={formRef}
+      >
+        <form onSubmit={handleSubmit} className="max-w-xl space-y-4">
+          {submitError ? <ErrorMessage message={submitError} /> : null}
+          <AdminFormField label="Brand name" hint="Example: Toyota, BMW, Mercedes.">
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Enter brand name"
+              className="admin-input"
+              required
+            />
+          </AdminFormField>
+
+          <label className="group block max-w-sm cursor-pointer">
+            <div className="flex h-36 w-full items-center justify-center overflow-hidden rounded-[8px] border border-dashed border-gray-200 bg-gray-50 p-3 transition-colors group-hover:border-[#3563E9] group-hover:bg-blue-50/40">
+              {previewSrc ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={previewSrc}
+                  alt={name || "Brand logo preview"}
+                  className="max-h-full max-w-full object-contain"
+                />
+              ) : (
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-700">Upload logo</p>
+                  <p className="mt-1 text-xs text-gray-400">PNG, JPG, or WEBP</p>
+                </div>
+              )}
+            </div>
+            <p className="mt-2 text-xs text-gray-400">
+              {logoFile ? logoFile.name : "Click the box above to choose a logo"}
+            </p>
+            <input
+              ref={logoInputRef}
+              type="file"
+              accept="image/*"
+              onChange={handleLogoChange}
+              className="sr-only"
+            />
+          </label>
+
+          {name ? (
+            <AdminFormField label="URL slug" hint="Generated automatically from the brand name.">
+              <input value={slugPreview} readOnly className="admin-input bg-gray-50 text-gray-500" />
+            </AdminFormField>
+          ) : null}
+
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={(event) => setIsActive(event.target.checked)}
+            />
+            Active on the site
+          </label>
+
+          <div className="flex flex-wrap gap-3 border-t border-gray-100 pt-4">
+            <button type="submit" disabled={saveMutation.isPending} className="admin-btn-primary">
+              {saveMutation.isPending ? "Saving..." : editingId ? "Save changes" : "Create brand"}
+            </button>
+            {editingId && editingBrand?.image_path ? (
+              <button
+                type="button"
+                className="admin-btn-secondary text-red-500"
+                onClick={() => deleteImageMutation.mutate(editingBrand.id)}
+              >
+                Remove logo
+              </button>
+            ) : null}
+            <button type="button" className="admin-btn-secondary" onClick={resetForm}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </AdminCollapsibleFormCard>
     </div>
   );
 }

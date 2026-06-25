@@ -1,7 +1,16 @@
 import { siteConfig } from "@/config/site";
 import type { Vehicle, VehiclePhoto } from "@/types/api";
 
+function usesApiProxy(): boolean {
+  const apiUrl = siteConfig.apiUrl.replace(/\/$/, "");
+  return apiUrl === "/api" || (apiUrl.endsWith("/api") && !apiUrl.startsWith("http"));
+}
+
 export function getStorageBaseUrl(): string {
+  if (usesApiProxy()) {
+    return "";
+  }
+
   const fromEnv = process.env.NEXT_PUBLIC_API_ORIGIN;
   if (fromEnv) {
     return fromEnv.replace(/\/$/, "");
@@ -11,7 +20,8 @@ export function getStorageBaseUrl(): string {
 }
 
 export function storageUrl(path: string): string {
-  return `${getStorageBaseUrl()}/storage/${path}`;
+  const base = getStorageBaseUrl();
+  return base ? `${base}/storage/${path}` : `/storage/${path}`;
 }
 
 export function getPrimaryPhoto(photos: VehiclePhoto[] | undefined): VehiclePhoto | null {

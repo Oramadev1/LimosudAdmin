@@ -8,10 +8,16 @@ export function formatCurrency(amount: string | number): string {
   }).format(Number.isFinite(value) ? value : 0);
 }
 
-export function formatDateTime(value: string): string {
+export function formatDateTime(value: string | Date): string {
   return new Intl.DateTimeFormat("fr-FR", {
     dateStyle: "medium",
     timeStyle: "short",
+  }).format(new Date(value));
+}
+
+export function formatDate(value: string | Date): string {
+  return new Intl.DateTimeFormat("fr-FR", {
+    dateStyle: "medium",
   }).format(new Date(value));
 }
 

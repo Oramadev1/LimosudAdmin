@@ -7,10 +7,13 @@ import {
   CalendarDays,
   Car,
   CreditCard,
+  FileText,
   LayoutDashboard,
   LogOut,
   MapPin,
   Tags,
+  UserCircle,
+  UserCog,
   Users,
   Wrench,
   Receipt,
@@ -27,11 +30,13 @@ const menuItems = [
   { href: "/vehicle-brands", label: "Brands", icon: Tags, permission: "vehicle_brands.view" },
   { href: "/vehicle-categories", label: "Categories", icon: Tags, permission: "vehicle_categories.view" },
   { href: "/customers", label: "Customers", icon: Users, permission: "customers.view" },
+  { href: "/users", label: "Team", icon: UserCog, permission: "users.view" },
   { href: "/reservations", label: "Reservations", icon: CalendarDays, permission: "reservations.view" },
   { href: "/payments", label: "Payments", icon: CreditCard, permission: "payments.view" },
   { href: "/maintenances", label: "Maintenance", icon: Wrench, permission: "maintenance.view" },
   { href: "/expenses", label: "Expenses", icon: Receipt, permission: "expenses.view" },
   { href: "/alerts", label: "Alerts", icon: AlertTriangle, permission: "alerts.view" },
+  { href: "/blog-posts", label: "Blog", icon: FileText, permission: "site_pages.view" },
 ];
 
 export function AdminSidebar({ onClose }: { onClose?: () => void }) {
@@ -95,10 +100,25 @@ export function AdminSidebar({ onClose }: { onClose?: () => void }) {
       </div>
 
       <div className="space-y-3 border-t border-gray-100 pt-4">
-        <div className="px-1">
-          <p className="text-sm font-semibold text-gray-900">{user?.name}</p>
-          <p className="truncate text-xs text-gray-400">{user?.email}</p>
-        </div>
+        <Link
+          href="/profile"
+          onClick={onClose}
+          className={`block rounded-[8px] px-1 py-2 transition-colors hover:bg-gray-50 ${
+            pathname === "/profile" ? "bg-blue-50" : ""
+          }`}
+        >
+          <div className="flex items-center gap-3 px-3">
+            <UserCircle
+              size={28}
+              className={pathname === "/profile" ? "text-[#3563E9]" : "text-gray-400"}
+            />
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-sm font-semibold text-gray-900">{user?.name}</p>
+              <p className="truncate text-xs text-gray-400">{user?.email}</p>
+              <p className="mt-0.5 text-xs font-medium text-[#3563E9]">View profile</p>
+            </div>
+          </div>
+        </Link>
         <button
           type="button"
           disabled={loggingOut}

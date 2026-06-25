@@ -1,5 +1,5 @@
 import Link from "next/link";
-import type { ReactNode } from "react";
+import type { ReactNode, RefObject } from "react";
 
 export function PageHeader({
   title,
@@ -7,30 +7,66 @@ export function PageHeader({
   actionHref,
   actionLabel,
   onActionClick,
+  actions,
 }: {
   title: string;
   description?: string;
   actionHref?: string;
   actionLabel?: string;
   onActionClick?: () => void;
+  actions?: ReactNode;
 }) {
+  const hasPrimaryAction = Boolean((onActionClick && actionLabel) || (actionHref && actionLabel));
+
   return (
-    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+    <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
       <div>
         <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
         {description ? (
           <p className="mt-1 text-sm text-gray-500">{description}</p>
         ) : null}
       </div>
-      {onActionClick && actionLabel ? (
-        <button type="button" onClick={onActionClick} className="admin-btn-primary">
-          {actionLabel}
-        </button>
-      ) : actionHref && actionLabel ? (
-        <Link href={actionHref} className="admin-btn-primary">
-          {actionLabel}
-        </Link>
+      {actions || hasPrimaryAction ? (
+        <div className="flex items-center gap-3 self-end sm:self-auto">
+          {actions}
+          {onActionClick && actionLabel ? (
+            <button type="button" onClick={onActionClick} className="admin-btn-primary">
+              {actionLabel}
+            </button>
+          ) : actionHref && actionLabel ? (
+            <Link href={actionHref} className="admin-btn-primary">
+              {actionLabel}
+            </Link>
+          ) : null}
+        </div>
       ) : null}
+    </div>
+  );
+}
+
+export function scrollToAdminForm(formRef: RefObject<HTMLElement | null>) {
+  requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+}
+
+export function AdminCollapsibleFormCard({
+  open,
+  title,
+  formRef,
+  children,
+}: {
+  open: boolean;
+  title: string;
+  formRef?: RefObject<HTMLDivElement | null>;
+  children: ReactNode;
+}) {
+  if (!open) {
+    return null;
+  }
+
+  return (
+    <div ref={formRef} className="admin-card mt-6 p-6">
+      <h2 className="mb-4 text-lg font-bold text-gray-900">{title}</h2>
+      {children}
     </div>
   );
 }

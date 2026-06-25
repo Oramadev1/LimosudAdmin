@@ -9,6 +9,7 @@ export const queryKeys = {
   vehicleMaintenances: (id: number, page: number) => ["vehicles", id, "maintenances", page] as const,
   vehicleExpenses: (id: number, page: number) => ["vehicles", id, "expenses", page] as const,
   locations: (page: number) => ["locations", page] as const,
+  blogPosts: (page: number) => ["blog-posts", page] as const,
   customers: (page: number) => ["customers", page] as const,
   customer: (id: number) => ["customer", id] as const,
   vehicleBrands: (page: number) => ["vehicle-brands", page] as const,
@@ -25,4 +26,8 @@ export const queryKeys = {
   expenseSummary: (year?: number, month?: number) => ["expenses", "summary", year, month] as const,
   alerts: (page: number) => ["alerts", page] as const,
   pendingAlerts: (page: number) => ["alerts", "pending", page] as const,
+  users: (page: number) => ["users", page] as const,
+  user: (id: number) => ["user", id] as const,
+  roles: ["roles"] as const,
+  permissions: ["permissions"] as const,
 };

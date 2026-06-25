@@ -12,6 +12,10 @@ import type {
   CreateReservationPayload,
   CreateVehiclePayload,
   Customer,
+  CustomerDetailResponse,
+  AdminRole,
+  AdminUser,
+  AdminUserDetailResponse,
   DashboardExpenseReport,
   DashboardRevenueReport,
   DashboardStatistics,
@@ -19,8 +23,11 @@ import type {
   Maintenance,
   Paginated,
   Payment,
+  Permission,
   PaymentSummary,
   Reservation,
+  ReservationAvailabilityResult,
+  VehicleAvailabilitySchedule,
   Vehicle,
   VehicleBrand,
   VehicleCategory,
@@ -194,12 +201,41 @@ export function deleteLocation(id: number) {
   return withAuth<null>(`/admin/locations/${id}`, { method: "DELETE" });
 }
 
+export function getBlogPosts(page = 1) {
+  return withAuth<Paginated<import("@/types/api").BlogPost>>(`/admin/blog-posts?page=${page}`);
+}
+
+export function getBlogPost(id: number) {
+  return withAuth<{ data: import("@/types/api").BlogPost }>(`/admin/blog-posts/${id}`);
+}
+
+export function createBlogPost(payload: import("@/types/api").CreateBlogPostPayload) {
+  return withAuth<{ data: import("@/types/api").BlogPost }>("/admin/blog-posts", {
+    method: "POST",
+    ...json(payload),
+  });
+}
+
+export function updateBlogPost(
+  id: number,
+  payload: Partial<import("@/types/api").CreateBlogPostPayload>,
+) {
+  return withAuth<{ data: import("@/types/api").BlogPost }>(`/admin/blog-posts/${id}`, {
+    method: "PATCH",
+    ...json(payload),
+  });
+}
+
+export function deleteBlogPost(id: number) {
+  return withAuth<null>(`/admin/blog-posts/${id}`, { method: "DELETE" });
+}
+
 export function getCustomers(page = 1) {
   return withAuth<Paginated<Customer>>(`/admin/customers?page=${page}`);
 }
 
 export function getCustomer(id: number) {
-  return withAuth<{ data: Customer }>(`/admin/customers/${id}`);
+  return withAuth<CustomerDetailResponse>(`/admin/customers/${id}`);
 }
 
 export function createCustomer(payload: CreateCustomerPayload) {
@@ -262,10 +298,19 @@ export function checkReservationAvailability(payload: {
   end_datetime: string;
   ignore_reservation_id?: number | null;
 }) {
-  return withAuth<{ available: boolean }>("/admin/reservations/check-availability", {
+  return withAuth<ReservationAvailabilityResult>("/admin/reservations/check-availability", {
     method: "POST",
     ...json(payload),
   });
+}
+
+export function getVehicleAvailabilitySchedule(vehicleId: number, ignoreReservationId?: number | null) {
+  const params = new URLSearchParams({ vehicle_id: String(vehicleId) });
+  if (ignoreReservationId) {
+    params.set("ignore_reservation_id", String(ignoreReservationId));
+  }
+
+  return withAuth<VehicleAvailabilitySchedule>(`/admin/reservations/vehicle-availability?${params.toString()}`);
 }
 
 export function reservationAction(
@@ -423,6 +468,52 @@ export function generateAlerts() {
   }>("/admin/alerts/generate", { method: "POST" });
 }
 
-export function alertAction(id: number, action: "seen" | "done" | "ignore") {
+export function alertAction(id: number, action: "done" | "ignore") {
   return withAuth<{ data: Alert }>(`/admin/alerts/${id}/${action}`, { method: "PATCH" });
+}
+
+export function getUsers(page = 1) {
+  return withAuth<Paginated<AdminUser>>(`/admin/users?page=${page}`);
+}
+
+export function getUser(id: number) {
+  return withAuth<AdminUserDetailResponse>(`/admin/users/${id}`);
+}
+
+export function updateUser(
+  id: number,
+  payload: {
+    name?: string;
+    email?: string;
+    phone?: string | null;
+    is_active?: boolean;
+    role_ids?: number[];
+  },
+) {
+  return withAuth<{ data: AdminUser }>(`/admin/users/${id}`, { method: "PATCH", ...json(payload) });
+}
+
+export function syncUserPermissions(
+  id: number,
+  payload: { permission_ids: number[]; role_ids?: number[] },
+) {
+  return withAuth<AdminUserDetailResponse>(`/admin/users/${id}/permissions`, {
+    method: "PATCH",
+    ...json(payload),
+  });
+}
+
+export function getRoles() {
+  return withAuth<{ data: AdminRole[] }>("/admin/roles");
+}
+
+export function getPermissions() {
+  return withAuth<{ data: Permission[] }>("/admin/permissions");
+}
+
+export function syncRolePermissions(roleId: number, permissionIds: number[]) {
+  return withAuth<{ data: AdminRole }>(`/admin/roles/${roleId}/permissions`, {
+    method: "PATCH",
+    ...json({ permission_ids: permissionIds }),
+  });
 }

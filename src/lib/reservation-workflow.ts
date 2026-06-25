@@ -49,6 +49,22 @@ export function canRecordPayment(statusSlug: string): boolean {
   return ["pending", "confirmed", "in_progress", "completed"].includes(statusSlug);
 }
 
+export function canDeleteReservation(statusSlug: string): boolean {
+  return ["pending", "cancelled", "rejected"].includes(statusSlug);
+}
+
+export function canMarkContractSigned(statusSlug: string | undefined): boolean {
+  return statusSlug === "generated";
+}
+
+export function canCancelContract(statusSlug: string | undefined): boolean {
+  return statusSlug === "generated" || statusSlug === "draft";
+}
+
+export function hasRemainingPayment(remainingAmount: number | string | null | undefined): boolean {
+  return Number(remainingAmount ?? 0) > 0;
+}
+
 export function canGenerateContract(statusSlug: string): boolean {
   return ["confirmed", "in_progress", "completed"].includes(statusSlug);
 }

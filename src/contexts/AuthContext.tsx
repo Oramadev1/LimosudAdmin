@@ -20,6 +20,8 @@ type AuthContextValue = {
   user: AdminUser | null;
   loading: boolean;
   setSession: (token: string, user: AdminUser) => void;
+  updateUser: (user: AdminUser) => void;
+  refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
   hasPermission: (slug: string) => boolean;
 };
@@ -62,6 +64,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(nextUser);
   }, []);
 
+  const updateUser = useCallback((nextUser: AdminUser) => {
+    setUser(nextUser);
+  }, []);
+
+  const refreshUser = useCallback(async () => {
+    const token = getToken();
+
+    if (!token) {
+      setUser(null);
+      return;
+    }
+
+    try {
+      const response = await getMe(token);
+      setUser(response.data);
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401) {
+        clearToken();
+      }
+      setUser(null);
+      throw error;
+    }
+  }, []);
+
   const logout = useCallback(async () => {
     const token = getToken();
 
@@ -87,8 +113,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const value = useMemo(
-    () => ({ user, loading, setSession, logout, hasPermission }),
-    [user, loading, setSession, logout, hasPermission],
+    () => ({ user, loading, setSession, updateUser, refreshUser, logout, hasPermission }),
+    [user, loading, setSession, updateUser, refreshUser, logout, hasPermission],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

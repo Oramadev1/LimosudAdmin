@@ -31,6 +31,29 @@ export interface MeResponse {
   data: AdminUser;
 }
 
+export interface UpdateProfilePayload {
+  name?: string;
+  email?: string;
+  phone?: string | null;
+  current_password?: string;
+  password?: string;
+  password_confirmation?: string;
+}
+
+export interface AdminRole {
+  id: number;
+  name: string;
+  slug: string;
+  permissions?: Permission[];
+}
+
+export interface AdminUserDetailResponse {
+  data: AdminUser;
+  role_permission_slugs: string[];
+  direct_permission_slugs: string[];
+  effective_permission_slugs: string[];
+}
+
 export interface ApiValidationError {
   message: string;
   errors: Record<string, string[]>;
@@ -157,6 +180,29 @@ export interface Location {
   updated_at: string;
 }
 
+export interface BlogPost {
+  id: number;
+  title: string;
+  slug: string;
+  excerpt: string;
+  content?: string;
+  cover_image: string | null;
+  is_published: boolean;
+  published_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface CreateBlogPostPayload {
+  title: string;
+  slug: string;
+  excerpt: string;
+  content: string;
+  cover_image?: string | null;
+  is_published?: boolean;
+  published_at?: string | null;
+}
+
 export interface CreateLocationPayload {
   location_type_slug: string;
   name: string;
@@ -174,8 +220,47 @@ export interface Customer {
   email: string | null;
   passport_or_cin: string | null;
   driving_license_number: string | null;
+  reservations_count?: number;
   created_at: string;
   updated_at: string;
+}
+
+export interface CustomerStatistics {
+  reservations_count: number;
+  completed_count: number;
+  cancelled_count: number;
+  active_count: number;
+  total_days: number;
+  total_booked: string;
+  total_paid: string;
+  total_outstanding: string;
+  average_booking_value: string;
+  first_reservation_at: string | null;
+  last_reservation_at: string | null;
+  favorite_vehicle: {
+    id: number;
+    name: string;
+    rentals_count: number;
+  } | null;
+}
+
+export interface CustomerReservationSummary {
+  id: number;
+  reservation_number: string;
+  status: LookupRef;
+  payment_status: LookupRef;
+  vehicle: { id: number; name: string; slug: string };
+  start_datetime: string;
+  end_datetime: string;
+  total_days: number;
+  total_price: string;
+  created_at: string;
+}
+
+export interface CustomerDetailResponse {
+  data: Customer;
+  statistics: CustomerStatistics;
+  recent_reservations: CustomerReservationSummary[];
 }
 
 export interface CreateCustomerPayload {
@@ -195,8 +280,8 @@ export interface Reservation {
   source: LookupRef;
   status: LookupRef;
   payment_status: LookupRef;
-  pickup_location: Location;
-  dropoff_location: Location;
+  pickup_location: Location | null;
+  dropoff_location: Location | null;
   start_datetime: string;
   end_datetime: string;
   total_days: number;
@@ -219,6 +304,34 @@ export interface CreateReservationPayload {
   end_datetime: string;
   customer_notes?: string | null;
   admin_notes?: string | null;
+}
+
+export interface BlockedReservationPeriod {
+  start_datetime: string;
+  end_datetime: string;
+  status: string | null;
+  reservation_number: string;
+}
+
+export interface SuggestedReservationPeriod {
+  start_datetime: string;
+  end_datetime: string;
+}
+
+export interface ReservationAvailabilityResult {
+  available: boolean;
+  vehicle_rentable: boolean;
+  vehicle_status: string | null;
+  blocked_periods: BlockedReservationPeriod[];
+  conflicting_periods: BlockedReservationPeriod[];
+  suggested_periods: SuggestedReservationPeriod[];
+}
+
+export interface VehicleAvailabilitySchedule {
+  vehicle_id: number;
+  vehicle_rentable: boolean;
+  vehicle_status: string | null;
+  blocked_periods: BlockedReservationPeriod[];
 }
 
 export interface AdminLookups {
@@ -248,10 +361,10 @@ export interface DashboardStatistics {
     available_vehicles: number;
     reserved_vehicles: number;
     rented_vehicles: number;
-    pending_reservations: number;
     confirmed_reservations: number;
+    reservations_today: number;
+    reservations_this_month: number;
     total_customers: number;
-    pending_alerts: number;
     monthly_revenue: number;
     monthly_expenses: number;
     monthly_net_profit: number;
@@ -264,6 +377,11 @@ export interface Alert {
   title: string;
   message: string | null;
   due_date: string | null;
+  reservation_id: number | null;
+  reservation?: {
+    id: number;
+    reservation_number: string;
+  } | null;
   alert_type: LookupRef;
   alert_status: LookupRef;
   vehicle?: {
@@ -403,8 +521,8 @@ export interface DashboardExpenseReport {
   date_range: { start_date: string; end_date: string };
   group_by: string;
   grouped_expenses: Record<string, number>;
-  expenses_by_category: Array<{ slug: string; name: string; total: number }>;
-  expenses_by_vehicle: Array<{ vehicle_id: number; vehicle_name: string; total: number }>;
+  expenses_by_category: Array<{ slug: string; name: string; total_amount: number; expense_count: number }>;
+  expenses_by_vehicle: Array<{ id: number | null; name: string; plate_number: string | null; total_amount: number; expense_count: number }>;
 }
 
 export interface CustomerDocument {

@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
@@ -13,29 +13,40 @@ import {
   updateMaintenance,
 } from "@/lib/api/admin";
 import { ApiError, isValidationError } from "@/lib/api/client";
-import { formatDateTime } from "@/lib/format";
+import { formatCurrency, formatDateTime } from "@/lib/format";
 import { useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Maintenance } from "@/types/api";
-import { EmptyState, ErrorMessage, PageHeader, Pagination } from "@/components/ui/AdminUi";
+import {
+  AdminCollapsibleFormCard,
+  EmptyState,
+  ErrorMessage,
+  PageHeader,
+  Pagination,
+  scrollToAdminForm,
+} from "@/components/ui/AdminUi";
+
+const emptyForm = {
+  vehicle_id: "",
+  maintenance_type_slug: "oil_change",
+  maintenance_date: new Date().toISOString().slice(0, 10),
+  next_maintenance_date: "",
+  mileage: "",
+  cost: "",
+  garage_name: "",
+  notes: "",
+};
 
 export default function MaintenancesPage() {
   const queryClient = useQueryClient();
+  const formRef = useRef<HTMLDivElement>(null);
   const { data: lookups } = useLookupsQuery();
   const [page, setPage] = useState(1);
   const [view, setView] = useState<"all" | "upcoming">("all");
+  const [showForm, setShowForm] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [form, setForm] = useState({
-    vehicle_id: "",
-    maintenance_type_slug: "oil_change",
-    maintenance_date: new Date().toISOString().slice(0, 10),
-    next_maintenance_date: "",
-    mileage: "",
-    cost: "",
-    garage_name: "",
-    notes: "",
-  });
+  const [form, setForm] = useState(emptyForm);
 
   const { data: vehicles } = useQuery({ queryKey: queryKeys.vehicles(1), queryFn: () => getVehicles(1) });
 
@@ -53,7 +64,10 @@ export default function MaintenancesPage() {
       }
       return createMaintenance(payload);
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["maintenances"] }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["maintenances"] });
+      resetForm();
+    },
   });
 
   const deleteMutation = useLockedMutation({
@@ -63,6 +77,38 @@ export default function MaintenancesPage() {
 
   const maintenances = data?.data ?? [];
   const lastPage = data?.meta.last_page ?? 1;
+
+  const resetForm = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setShowForm(false);
+    setSubmitError(null);
+  };
+
+  const openCreateForm = () => {
+    setEditingId(null);
+    setForm(emptyForm);
+    setSubmitError(null);
+    setShowForm(true);
+    scrollToAdminForm(formRef);
+  };
+
+  const startEdit = (item: Maintenance) => {
+    setEditingId(item.id);
+    setForm({
+      vehicle_id: String(item.vehicle.id),
+      maintenance_type_slug: item.maintenance_type.slug,
+      maintenance_date: item.maintenance_date.slice(0, 10),
+      next_maintenance_date: item.next_maintenance_date?.slice(0, 10) ?? "",
+      mileage: item.mileage ? String(item.mileage) : "",
+      cost: item.cost ?? "",
+      garage_name: item.garage_name ?? "",
+      notes: item.notes ?? "",
+    });
+    setSubmitError(null);
+    setShowForm(true);
+    scrollToAdminForm(formRef);
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -79,17 +125,6 @@ export default function MaintenancesPage() {
         notes: form.notes || null,
         ...(editingId ? { id: editingId } : {}),
       });
-      setEditingId(null);
-      setForm({
-        vehicle_id: "",
-        maintenance_type_slug: "oil_change",
-        maintenance_date: new Date().toISOString().slice(0, 10),
-        next_maintenance_date: "",
-        mileage: "",
-        cost: "",
-        garage_name: "",
-        notes: "",
-      });
     } catch (err) {
       const body = err instanceof ApiError ? err.body : err;
       setSubmitError(
@@ -103,7 +138,12 @@ export default function MaintenancesPage() {
 
   return (
     <div>
-      <PageHeader title="Maintenance" description="Vehicle service history and upcoming maintenance." />
+      <PageHeader
+        title="Maintenance"
+        description="Vehicle service history and upcoming maintenance."
+        actionLabel="Add maintenance"
+        onActionClick={openCreateForm}
+      />
 
       <div className="mb-4 flex gap-2">
         <button
@@ -122,48 +162,17 @@ export default function MaintenancesPage() {
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="admin-card mb-6 grid gap-4 p-6 md:grid-cols-2">
-        <h2 className="md:col-span-2 text-lg font-bold">
-          {editingId ? "Edit maintenance" : "Add maintenance"}
-        </h2>
-        <select
-          value={form.vehicle_id}
-          onChange={(e) => setForm((c) => ({ ...c, vehicle_id: e.target.value }))}
-          className="admin-input"
-          required
-        >
-          <option value="">Select vehicle</option>
-          {vehicles?.data.map((v) => (
-            <option key={v.id} value={v.id}>{v.name} ({v.plate_number})</option>
-          ))}
-        </select>
-        <select
-          value={form.maintenance_type_slug}
-          onChange={(e) => setForm((c) => ({ ...c, maintenance_type_slug: e.target.value }))}
-          className="admin-input"
-        >
-          {lookups?.maintenance_types.map((item) => (
-            <option key={item.slug} value={item.slug}>{item.name}</option>
-          ))}
-        </select>
-        <input type="date" value={form.maintenance_date} onChange={(e) => setForm((c) => ({ ...c, maintenance_date: e.target.value }))} className="admin-input" required />
-        <input type="date" value={form.next_maintenance_date} onChange={(e) => setForm((c) => ({ ...c, next_maintenance_date: e.target.value }))} className="admin-input" />
-        <input placeholder="Mileage" value={form.mileage} onChange={(e) => setForm((c) => ({ ...c, mileage: e.target.value }))} className="admin-input" />
-        <input placeholder="Cost" value={form.cost} onChange={(e) => setForm((c) => ({ ...c, cost: e.target.value }))} className="admin-input" />
-        <input placeholder="Garage name" value={form.garage_name} onChange={(e) => setForm((c) => ({ ...c, garage_name: e.target.value }))} className="admin-input md:col-span-2" />
-        <textarea placeholder="Notes" value={form.notes} onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))} className="admin-input min-h-20 md:col-span-2" />
-        <button type="submit" disabled={saveMutation.isPending} className="admin-btn-primary md:col-span-2">
-          {saveMutation.isPending ? "Saving..." : editingId ? "Update" : "Create"}
-        </button>
-      </form>
-
-      {submitError ? <ErrorMessage message={submitError} /> : null}
       {loadError ? <ErrorMessage message={loadError} /> : null}
 
       {isPending ? (
         <div className="admin-card p-6 text-sm text-gray-500">Loading...</div>
       ) : maintenances.length === 0 ? (
-        <EmptyState title="No maintenance records" description="Add service records for your fleet." />
+        <EmptyState
+          title="No maintenance records"
+          description="Add service records for your fleet."
+          actionLabel="Add maintenance"
+          onAction={openCreateForm}
+        />
       ) : (
         <div className={`admin-card overflow-x-auto ${isFetching ? "opacity-80" : ""}`}>
           <table className="admin-table w-full">
@@ -172,6 +181,7 @@ export default function MaintenancesPage() {
                 <th className="px-4 py-3">Vehicle</th>
                 <th className="px-4 py-3">Type</th>
                 <th className="px-4 py-3">Date</th>
+                <th className="px-4 py-3">Cost</th>
                 <th className="px-4 py-3">Next due</th>
                 <th className="px-4 py-3">Actions</th>
               </tr>
@@ -182,25 +192,16 @@ export default function MaintenancesPage() {
                   <td className="px-4 py-3">{item.vehicle.name}</td>
                   <td className="px-4 py-3">{item.maintenance_type.name}</td>
                   <td className="px-4 py-3">{formatDateTime(item.maintenance_date)}</td>
+                  <td className="px-4 py-3 font-semibold">
+                    {item.cost ? formatCurrency(item.cost) : "—"}
+                  </td>
                   <td className="px-4 py-3">{item.next_maintenance_date ? formatDateTime(item.next_maintenance_date) : "—"}</td>
                   <td className="px-4 py-3">
                     <div className="flex gap-2">
                       <button
                         type="button"
                         className="text-[#3563E9] hover:underline"
-                        onClick={() => {
-                          setEditingId(item.id);
-                          setForm({
-                            vehicle_id: String(item.vehicle.id),
-                            maintenance_type_slug: item.maintenance_type.slug,
-                            maintenance_date: item.maintenance_date.slice(0, 10),
-                            next_maintenance_date: item.next_maintenance_date?.slice(0, 10) ?? "",
-                            mileage: item.mileage ? String(item.mileage) : "",
-                            cost: item.cost ?? "",
-                            garage_name: item.garage_name ?? "",
-                            notes: item.notes ?? "",
-                          });
-                        }}
+                        onClick={() => startEdit(item)}
                       >
                         Edit
                       </button>
@@ -210,6 +211,7 @@ export default function MaintenancesPage() {
                         onClick={async () => {
                           if (!confirm("Delete maintenance record?")) return;
                           await deleteMutation.mutateAsync(item.id);
+                          if (editingId === item.id) resetForm();
                         }}
                       >
                         Delete
@@ -225,6 +227,50 @@ export default function MaintenancesPage() {
           </div>
         </div>
       )}
+
+      <AdminCollapsibleFormCard
+        open={showForm}
+        title={editingId ? "Edit maintenance" : "Add maintenance"}
+        formRef={formRef}
+      >
+        <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+          {submitError ? <div className="md:col-span-2"><ErrorMessage message={submitError} /></div> : null}
+          <select
+            value={form.vehicle_id}
+            onChange={(e) => setForm((c) => ({ ...c, vehicle_id: e.target.value }))}
+            className="admin-input"
+            required
+          >
+            <option value="">Select vehicle</option>
+            {vehicles?.data.map((v) => (
+              <option key={v.id} value={v.id}>{v.name} ({v.plate_number})</option>
+            ))}
+          </select>
+          <select
+            value={form.maintenance_type_slug}
+            onChange={(e) => setForm((c) => ({ ...c, maintenance_type_slug: e.target.value }))}
+            className="admin-input"
+          >
+            {lookups?.maintenance_types.map((item) => (
+              <option key={item.slug} value={item.slug}>{item.name}</option>
+            ))}
+          </select>
+          <input type="date" value={form.maintenance_date} onChange={(e) => setForm((c) => ({ ...c, maintenance_date: e.target.value }))} className="admin-input" required />
+          <input type="date" value={form.next_maintenance_date} onChange={(e) => setForm((c) => ({ ...c, next_maintenance_date: e.target.value }))} className="admin-input" />
+          <input placeholder="Mileage" value={form.mileage} onChange={(e) => setForm((c) => ({ ...c, mileage: e.target.value }))} className="admin-input" />
+          <input placeholder="Cost" value={form.cost} onChange={(e) => setForm((c) => ({ ...c, cost: e.target.value }))} className="admin-input" />
+          <input placeholder="Garage name" value={form.garage_name} onChange={(e) => setForm((c) => ({ ...c, garage_name: e.target.value }))} className="admin-input md:col-span-2" />
+          <textarea placeholder="Notes" value={form.notes} onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))} className="admin-input min-h-20 md:col-span-2" />
+          <div className="md:col-span-2 flex gap-3">
+            <button type="submit" disabled={saveMutation.isPending} className="admin-btn-primary">
+              {saveMutation.isPending ? "Saving..." : editingId ? "Update" : "Create"}
+            </button>
+            <button type="button" className="admin-btn-secondary" onClick={resetForm}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </AdminCollapsibleFormCard>
     </div>
   );
 }

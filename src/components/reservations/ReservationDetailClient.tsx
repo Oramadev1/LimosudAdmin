@@ -24,12 +24,16 @@ import {
   getReservationStatusBadgeClass,
 } from "@/lib/reservation-status";
 import {
+  canCancelContract,
+  canDeleteReservation,
   canGenerateContract,
+  canMarkContractSigned,
   canRecordPayment,
   filterAllowedReservationActions,
   getReservationActionButtonClass,
   getReservationActionLabel,
   getReservationStatusHint,
+  hasRemainingPayment,
 } from "@/lib/reservation-workflow";
 import { useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
@@ -72,7 +76,7 @@ export function ReservationDetailClient({ id }: { id: number }) {
   const { data: contractData, refetch: refetchContract } = useQuery({
     queryKey: queryKeys.contract(id),
     queryFn: () => getContractByReservation(id),
-    enabled: false,
+    enabled: hasPermission("contracts.view"),
     retry: false,
   });
 
@@ -200,6 +204,7 @@ export function ReservationDetailClient({ id }: { id: number }) {
       try {
         await markContractSigned(contractId);
         await refetchContract();
+        queryClient.invalidateQueries({ queryKey: queryKeys.contract(id) });
         setContractMessage("Contract marked as signed.");
       } catch (err) {
         setError(err instanceof ApiError ? err.message : "Failed to mark contract as signed.");
@@ -240,12 +245,22 @@ export function ReservationDetailClient({ id }: { id: number }) {
   const statusSlug = reservation.status.slug;
   const allowedActions = filterAllowedReservationActions(statusSlug, hasPermission);
   const statusHint = getReservationStatusHint(statusSlug);
-  const paymentAllowed = canRecordPayment(statusSlug) && hasPermission("payments.manage");
-  const contractAllowed = canGenerateContract(statusSlug);
   const canManageContracts = hasPermission("contracts.generate");
   const canViewContracts = hasPermission("contracts.view");
   const canUpdateContracts = hasPermission("contracts.update");
-  const canDeleteReservation = hasPermission("reservations.delete");
+  const contractStatusSlug = contract?.status.slug;
+  const canMarkSigned =
+    canUpdateContracts && contract != null && canMarkContractSigned(contractStatusSlug);
+  const canCancelContractAction =
+    canUpdateContracts && contract != null && canCancelContract(contractStatusSlug);
+  const paymentAllowed =
+    canRecordPayment(statusSlug) &&
+    hasPermission("payments.manage") &&
+    paymentSummary != null &&
+    hasRemainingPayment(paymentSummary.remaining_amount);
+  const contractAllowed = canGenerateContract(statusSlug);
+  const showDeleteReservation =
+    hasPermission("reservations.delete") && canDeleteReservation(statusSlug);
   const pendingAction = actionMutation.isPending ? actionMutation.variables : null;
 
   return (
@@ -295,7 +310,7 @@ export function ReservationDetailClient({ id }: { id: number }) {
               {pendingAction === action ? "Working..." : getReservationActionLabel(action)}
             </button>
           ))}
-          {canDeleteReservation ? (
+          {showDeleteReservation ? (
             <button
               type="button"
               className="admin-btn-danger"
@@ -312,18 +327,55 @@ export function ReservationDetailClient({ id }: { id: number }) {
             </button>
           ) : null}
         </div>
-        {allowedActions.length === 0 && !canDeleteReservation ? (
+        {allowedActions.length === 0 && !showDeleteReservation ? (
           <p className="mt-3 text-sm text-gray-500">No actions available for this status or your role.</p>
         ) : null}
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
         <SectionCard title="Booking details">
-          <DetailRow label="Customer" value={reservation.customer.full_name} />
-          <DetailRow label="Phone" value={reservation.customer.phone} />
-          <DetailRow label="Vehicle" value={reservation.vehicle.name} />
-          <DetailRow label="Pickup" value={reservation.pickup_location.name} />
-          <DetailRow label="Drop-off" value={reservation.dropoff_location.name} />
+          <DetailRow
+            label="Customer"
+            value={
+              reservation.customer ? (
+                <Link
+                  href={`/customers/${reservation.customer.id}`}
+                  className="font-semibold text-[#3563E9] hover:underline"
+                >
+                  {reservation.customer.full_name}
+                </Link>
+              ) : (
+                "—"
+              )
+            }
+          />
+          <DetailRow label="Phone" value={reservation.customer?.phone ?? "—"} />
+          <DetailRow label="Email" value={reservation.customer?.email ?? "—"} />
+          <DetailRow label="Nationality" value={reservation.customer?.nationality ?? "—"} />
+          <DetailRow label="Passport / CIN" value={reservation.customer?.passport_or_cin ?? "—"} />
+          <DetailRow
+            label="Driving license"
+            value={reservation.customer?.driving_license_number ?? "—"}
+          />
+          {!reservation.customer?.passport_or_cin ? (
+            <p className="mt-2 text-xs text-amber-700">
+              Missing ID details.{" "}
+              {reservation.customer ? (
+                <Link
+                  href={`/customers/${reservation.customer.id}/edit?returnTo=/reservations/${id}`}
+                  className="font-semibold underline"
+                >
+                  Edit customer profile
+                </Link>
+              ) : (
+                "Update the customer record"
+              )}{" "}
+              before generating the contract.
+            </p>
+          ) : null}
+          <DetailRow label="Vehicle" value={reservation.vehicle?.name ?? "—"} />
+          <DetailRow label="Pickup" value={reservation.pickup_location?.name ?? "—"} />
+          <DetailRow label="Drop-off" value={reservation.dropoff_location?.name ?? "—"} />
           <DetailRow label="Start" value={formatDateTime(reservation.start_datetime)} />
           <DetailRow label="End" value={formatDateTime(reservation.end_datetime)} />
           <DetailRow label="Total price" value={formatCurrency(reservation.total_price)} />
@@ -416,6 +468,10 @@ export function ReservationDetailClient({ id }: { id: number }) {
             {paymentMutation.isPending ? "Saving..." : "Add payment"}
           </button>
         </form>
+      ) : canRecordPayment(statusSlug) && hasPermission("payments.manage") && paymentSummary && !hasRemainingPayment(paymentSummary.remaining_amount) ? (
+        <div className="admin-card mt-4 p-6 text-sm text-gray-500">
+          This reservation is fully paid. No further payment is needed.
+        </div>
       ) : canRecordPayment(statusSlug) && !hasPermission("payments.manage") ? (
         <div className="admin-card mt-4 p-6 text-sm text-gray-500">
           You do not have permission to record payments.
@@ -478,28 +534,29 @@ export function ReservationDetailClient({ id }: { id: number }) {
                   {contractAction === "download" ? "Downloading..." : "Download PDF"}
                 </button>
               ) : null}
-              {canUpdateContracts ? (
-                <>
-                  <button
-                    type="button"
-                    onClick={() => handleMarkContractSigned(contract.id)}
-                    disabled={contractAction !== null}
-                    className="admin-btn-success"
-                  >
-                    {contractAction === "sign" ? "Saving..." : "Mark signed"}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleCancelContract(contract.id)}
-                    disabled={contractAction !== null}
-                    className="admin-btn-danger"
-                  >
-                    {contractAction === "cancel" ? "Cancelling..." : "Cancel contract"}
-                  </button>
-                </>
+              {canMarkSigned ? (
+                <button
+                  type="button"
+                  onClick={() => handleMarkContractSigned(contract.id)}
+                  disabled={contractAction !== null}
+                  className="admin-btn-success"
+                >
+                  {contractAction === "sign" ? "Saving..." : "Mark signed"}
+                </button>
+              ) : null}
+              {canCancelContractAction ? (
+                <button
+                  type="button"
+                  onClick={() => handleCancelContract(contract.id)}
+                  disabled={contractAction !== null}
+                  className="admin-btn-danger"
+                >
+                  {contractAction === "cancel" ? "Cancelling..." : "Cancel contract"}
+                </button>
               ) : null}
               <p className="w-full text-sm text-gray-600">
                 {contract.contract_number} · {contract.status.name}
+                {contract.signed_at ? ` · Signed ${formatDateTime(contract.signed_at)}` : ""}
               </p>
             </>
           ) : null}

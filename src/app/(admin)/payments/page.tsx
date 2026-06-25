@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useState } from "react";
+import { FormEvent, useRef, useState } from "react";
 import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
@@ -16,24 +16,35 @@ import { useAuth } from "@/contexts/AuthContext";
 import { canRecordPayment } from "@/lib/reservation-workflow";
 import { useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
-import { EmptyState, ErrorMessage, PageHeader, Pagination } from "@/components/ui/AdminUi";
+import {
+  AdminCollapsibleFormCard,
+  EmptyState,
+  ErrorMessage,
+  PageHeader,
+  Pagination,
+  scrollToAdminForm,
+} from "@/components/ui/AdminUi";
+
+const emptyForm = {
+  reservation_id: "",
+  payment_method_slug: "cash",
+  payment_type_slug: "rental_payment",
+  payment_status_slug: "paid",
+  amount: "",
+  payment_date: new Date().toISOString().slice(0, 10),
+  reference: "",
+  notes: "",
+};
 
 export default function PaymentsPage() {
   const queryClient = useQueryClient();
+  const formRef = useRef<HTMLDivElement>(null);
   const { hasPermission } = useAuth();
   const { data: lookups } = useLookupsQuery();
   const [page, setPage] = useState(1);
+  const [showForm, setShowForm] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const [form, setForm] = useState({
-    reservation_id: "",
-    payment_method_slug: "cash",
-    payment_type_slug: "rental_payment",
-    payment_status_slug: "paid",
-    amount: "",
-    payment_date: new Date().toISOString().slice(0, 10),
-    reference: "",
-    notes: "",
-  });
+  const [form, setForm] = useState(emptyForm);
 
   const { data, isPending, isFetching, error } = useQuery({
     queryKey: queryKeys.payments(page),
@@ -51,6 +62,7 @@ export default function PaymentsPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["payments"] });
       queryClient.invalidateQueries({ queryKey: ["reservations"] });
+      resetForm();
     },
   });
 
@@ -67,6 +79,21 @@ export default function PaymentsPage() {
   const payableReservations =
     reservations?.data.filter((reservation) => canRecordPayment(reservation.status.slug)) ?? [];
 
+  const canManagePayments = hasPermission("payments.manage");
+
+  const resetForm = () => {
+    setForm(emptyForm);
+    setShowForm(false);
+    setSubmitError(null);
+  };
+
+  const openCreateForm = () => {
+    setForm(emptyForm);
+    setSubmitError(null);
+    setShowForm(true);
+    scrollToAdminForm(formRef);
+  };
+
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setSubmitError(null);
@@ -81,7 +108,6 @@ export default function PaymentsPage() {
         reference: form.reference || null,
         notes: form.notes || null,
       });
-      setForm((c) => ({ ...c, amount: "", reference: "", notes: "" }));
     } catch (err) {
       const body = err instanceof ApiError ? err.body : err;
       setSubmitError(
@@ -93,81 +119,32 @@ export default function PaymentsPage() {
   const loadError =
     error instanceof ApiError ? error.message : error ? "Failed to load payments." : null;
 
-  const canManagePayments = hasPermission("payments.manage");
-
   return (
     <div>
       <PageHeader
         title="Payments"
         description="Record offline payments (cash, bank transfer, etc.)."
+        actionLabel={canManagePayments ? "Record payment" : undefined}
+        onActionClick={canManagePayments ? openCreateForm : undefined}
       />
 
-      {canManagePayments ? (
-      <form onSubmit={handleSubmit} className="admin-card mb-6 grid gap-4 p-6 md:grid-cols-2">
-        <h2 className="md:col-span-2 text-lg font-bold">Record payment</h2>
-        <select
-          value={form.reservation_id}
-          onChange={(e) => setForm((c) => ({ ...c, reservation_id: e.target.value }))}
-          className="admin-input"
-          required
-        >
-          <option value="">Select reservation</option>
-          {payableReservations.map((r) => (
-            <option key={r.id} value={r.id}>
-              {r.reservation_number} — {r.customer.full_name} ({r.status.name})
-            </option>
-          ))}
-        </select>
-        <input
-          type="number"
-          placeholder="Amount"
-          value={form.amount}
-          onChange={(e) => setForm((c) => ({ ...c, amount: e.target.value }))}
-          className="admin-input"
-          required
-        />
-        <input
-          type="date"
-          value={form.payment_date}
-          onChange={(e) => setForm((c) => ({ ...c, payment_date: e.target.value }))}
-          className="admin-input"
-          required
-        />
-        <select
-          value={form.payment_method_slug}
-          onChange={(e) => setForm((c) => ({ ...c, payment_method_slug: e.target.value }))}
-          className="admin-input"
-        >
-          {lookups?.payment_methods.map((item) => (
-            <option key={item.slug} value={item.slug}>{item.name}</option>
-          ))}
-        </select>
-        <select
-          value={form.payment_type_slug}
-          onChange={(e) => setForm((c) => ({ ...c, payment_type_slug: e.target.value }))}
-          className="admin-input"
-        >
-          {lookups?.payment_types.map((item) => (
-            <option key={item.slug} value={item.slug}>{item.name}</option>
-          ))}
-        </select>
-        <button type="submit" disabled={createMutation.isPending} className="admin-btn-primary md:col-span-2">
-          {createMutation.isPending ? "Saving..." : "Add payment"}
-        </button>
-      </form>
-      ) : (
+      {!canManagePayments ? (
         <div className="admin-card mb-6 p-6 text-sm text-gray-500">
           You do not have permission to record payments.
         </div>
-      )}
+      ) : null}
 
-      {submitError ? <ErrorMessage message={submitError} /> : null}
       {loadError ? <ErrorMessage message={loadError} /> : null}
 
       {isPending ? (
         <div className="admin-card p-6 text-sm text-gray-500">Loading...</div>
       ) : payments.length === 0 ? (
-        <EmptyState title="No payments" description="Recorded payments will appear here." />
+        <EmptyState
+          title="No payments"
+          description="Recorded payments will appear here."
+          actionLabel={canManagePayments ? "Record payment" : undefined}
+          onAction={canManagePayments ? openCreateForm : undefined}
+        />
       ) : (
         <div className={`admin-card overflow-x-auto ${isFetching ? "opacity-80" : ""}`}>
           <table className="admin-table w-full">
@@ -214,6 +191,68 @@ export default function PaymentsPage() {
           </div>
         </div>
       )}
+
+      {canManagePayments ? (
+        <AdminCollapsibleFormCard open={showForm} title="Record payment" formRef={formRef}>
+          <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
+            {submitError ? <div className="md:col-span-2"><ErrorMessage message={submitError} /></div> : null}
+            <select
+              value={form.reservation_id}
+              onChange={(e) => setForm((c) => ({ ...c, reservation_id: e.target.value }))}
+              className="admin-input"
+              required
+            >
+              <option value="">Select reservation</option>
+              {payableReservations.map((r) => (
+                <option key={r.id} value={r.id}>
+                  {r.reservation_number} — {r.customer.full_name} ({r.status.name})
+                </option>
+              ))}
+            </select>
+            <input
+              type="number"
+              placeholder="Amount"
+              value={form.amount}
+              onChange={(e) => setForm((c) => ({ ...c, amount: e.target.value }))}
+              className="admin-input"
+              required
+            />
+            <input
+              type="date"
+              value={form.payment_date}
+              onChange={(e) => setForm((c) => ({ ...c, payment_date: e.target.value }))}
+              className="admin-input"
+              required
+            />
+            <select
+              value={form.payment_method_slug}
+              onChange={(e) => setForm((c) => ({ ...c, payment_method_slug: e.target.value }))}
+              className="admin-input"
+            >
+              {lookups?.payment_methods.map((item) => (
+                <option key={item.slug} value={item.slug}>{item.name}</option>
+              ))}
+            </select>
+            <select
+              value={form.payment_type_slug}
+              onChange={(e) => setForm((c) => ({ ...c, payment_type_slug: e.target.value }))}
+              className="admin-input"
+            >
+              {lookups?.payment_types.map((item) => (
+                <option key={item.slug} value={item.slug}>{item.name}</option>
+              ))}
+            </select>
+            <div className="md:col-span-2 flex gap-3">
+              <button type="submit" disabled={createMutation.isPending} className="admin-btn-primary">
+                {createMutation.isPending ? "Saving..." : "Add payment"}
+              </button>
+              <button type="button" className="admin-btn-secondary" onClick={resetForm}>
+                Cancel
+              </button>
+            </div>
+          </form>
+        </AdminCollapsibleFormCard>
+      ) : null}
     </div>
   );
 }

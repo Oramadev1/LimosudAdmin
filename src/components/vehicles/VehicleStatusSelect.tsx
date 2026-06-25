@@ -14,7 +14,6 @@ function statusSelectClass(slug: string): string {
     case "repair":
       return "border-orange-200 bg-orange-50 text-orange-800";
     case "out_of_service":
-    case "sold":
       return "border-gray-200 bg-gray-100 text-gray-600";
     case "available":
     default:

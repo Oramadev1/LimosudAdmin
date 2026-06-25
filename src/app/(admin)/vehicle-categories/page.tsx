@@ -5,11 +5,13 @@ import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-quer
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
+  AdminCollapsibleFormCard,
   AdminFormField,
   EmptyState,
   ErrorMessage,
   PageHeader,
   Pagination,
+  scrollToAdminForm,
 } from "@/components/ui/AdminUi";
 import {
   createVehicleCategory,
@@ -84,7 +86,7 @@ export default function VehicleCategoriesPage() {
   const openCreateForm = () => {
     resetForm();
     setShowForm(true);
-    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    scrollToAdminForm(formRef);
   };
 
   const startEdit = (category: VehicleCategory) => {
@@ -94,7 +96,7 @@ export default function VehicleCategoriesPage() {
     setIsActive(category.is_active);
     setShowForm(true);
     setSubmitError(null);
-    requestAnimationFrame(() => formRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }));
+    scrollToAdminForm(formRef);
   };
 
   const handleSubmit = async (event: FormEvent) => {
@@ -125,74 +127,6 @@ export default function VehicleCategoriesPage() {
         onActionClick={openCreateForm}
       />
 
-      {showForm ? (
-        <div ref={formRef} className="admin-card mb-6 p-6">
-          <div className="mb-6 flex items-start justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-gray-900">
-                {editingId ? "Edit category" : "New category"}
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                {editingId
-                  ? "Update the category details shown when creating vehicles."
-                  : "Create a category to organize your fleet."}
-              </p>
-            </div>
-            <button type="button" className="admin-btn-secondary" onClick={resetForm}>
-              Close
-            </button>
-          </div>
-
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-2">
-              <AdminFormField label="Category name" hint="Example: Economy, SUV, Luxury.">
-                <input
-                  value={name}
-                  onChange={(event) => setName(event.target.value)}
-                  placeholder="Enter category name"
-                  className="admin-input"
-                  required
-                />
-              </AdminFormField>
-
-              {name ? (
-                <AdminFormField label="URL slug" hint="Generated automatically from the category name.">
-                  <input value={slugPreview} readOnly className="admin-input bg-gray-50 text-gray-500" />
-                </AdminFormField>
-              ) : null}
-            </div>
-
-            <AdminFormField label="Description" hint="Optional. Shown internally to help your team choose the right category.">
-              <textarea
-                value={description}
-                onChange={(event) => setDescription(event.target.value)}
-                placeholder="Short description of this category"
-                className="admin-input min-h-24"
-              />
-            </AdminFormField>
-
-            <label className="flex items-center gap-2 text-sm text-gray-700">
-              <input
-                type="checkbox"
-                checked={isActive}
-                onChange={(event) => setIsActive(event.target.checked)}
-              />
-              Active on the site
-            </label>
-
-            <div className="flex flex-wrap gap-3 border-t border-gray-100 pt-4">
-              <button type="submit" disabled={saveMutation.isPending} className="admin-btn-primary">
-                {saveMutation.isPending ? "Saving..." : editingId ? "Save changes" : "Create category"}
-              </button>
-              <button type="button" className="admin-btn-secondary" onClick={resetForm}>
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
-      ) : null}
-
-      {submitError ? <div className="mb-4"><ErrorMessage message={submitError} /></div> : null}
       {loadError ? <div className="mb-4"><ErrorMessage message={loadError} /></div> : null}
 
       {isPending ? (
@@ -271,6 +205,65 @@ export default function VehicleCategoriesPage() {
           </div>
         </div>
       )}
+
+      <AdminCollapsibleFormCard
+        open={showForm}
+        title={editingId ? "Edit category" : "Add category"}
+        formRef={formRef}
+      >
+        <p className="mb-4 text-sm text-gray-500">
+          {editingId
+            ? "Update the category details shown when creating vehicles."
+            : "Create a category to organize your fleet."}
+        </p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          {submitError ? <ErrorMessage message={submitError} /> : null}
+          <div className="grid gap-4 md:grid-cols-2">
+            <AdminFormField label="Category name" hint="Example: Economy, SUV, Luxury.">
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Enter category name"
+                className="admin-input"
+                required
+              />
+            </AdminFormField>
+
+            {name ? (
+              <AdminFormField label="URL slug" hint="Generated automatically from the category name.">
+                <input value={slugPreview} readOnly className="admin-input bg-gray-50 text-gray-500" />
+              </AdminFormField>
+            ) : null}
+          </div>
+
+          <AdminFormField label="Description" hint="Optional. Shown internally to help your team choose the right category.">
+            <textarea
+              value={description}
+              onChange={(event) => setDescription(event.target.value)}
+              placeholder="Short description of this category"
+              className="admin-input min-h-24"
+            />
+          </AdminFormField>
+
+          <label className="flex items-center gap-2 text-sm text-gray-700">
+            <input
+              type="checkbox"
+              checked={isActive}
+              onChange={(event) => setIsActive(event.target.checked)}
+            />
+            Active on the site
+          </label>
+
+          <div className="flex flex-wrap gap-3 border-t border-gray-100 pt-4">
+            <button type="submit" disabled={saveMutation.isPending} className="admin-btn-primary">
+              {saveMutation.isPending ? "Saving..." : editingId ? "Save changes" : "Create category"}
+            </button>
+            <button type="button" className="admin-btn-secondary" onClick={resetForm}>
+              Cancel
+            </button>
+          </div>
+        </form>
+      </AdminCollapsibleFormCard>
     </div>
   );
 }
