@@ -1,10 +1,12 @@
 import { LoginForm } from "@/app/login/LoginForm";
+import { LoginRedirect } from "@/app/login/LoginRedirect";
 import { BrandLogo } from "@/components/ui/BrandLogo";
 import { siteConfig } from "@/config/site";
 
 export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[#F6F7F9] px-4">
+      <LoginRedirect />
       <div className="w-full max-w-md">
         <div className="mb-6 flex flex-col items-center text-center">
           <BrandLogo height={72} />

@@ -28,7 +28,7 @@ export function LoginForm() {
       try {
         const response = await login(email, password);
         setSession(response.access_token, response.user);
-        router.push("/dashboard");
+        router.replace("/dashboard");
       } catch (err) {
         const body = err instanceof ApiError ? err.body : err;
 

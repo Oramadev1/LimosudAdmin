@@ -11,9 +11,15 @@ import {
 } from "react";
 import { useRouter } from "next/navigation";
 
-import { getMe, logout as logoutRequest } from "@/lib/api/auth";
+import { getMe, logout as logoutRequest, parseAdminUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
-import { clearToken, getToken, setToken } from "@/lib/auth/token";
+import {
+  clearSession,
+  getStoredUser,
+  getToken,
+  setStoredUser,
+  setToken,
+} from "@/lib/auth/token";
 import type { AdminUser } from "@/types/api";
 
 type AuthContextValue = {
@@ -37,34 +43,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = getToken();
 
     if (!token) {
+      clearSession();
       setUser(null);
       setLoading(false);
       return;
     }
 
+    const cachedUser = getStoredUser();
+    if (cachedUser) {
+      setUser(cachedUser);
+    }
+
     try {
       const response = await getMe(token);
-      setUser(response.data);
+      const nextUser = parseAdminUser(response);
+
+      if (!nextUser) {
+        clearSession();
+        setUser(null);
+        return;
+      }
+
+      setStoredUser(nextUser);
+      setUser(nextUser);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        clearToken();
+        clearSession();
+        setUser(null);
+        return;
       }
-      setUser(null);
+
+      if (!cachedUser) {
+        setUser(null);
+      }
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    bootstrap();
+    void bootstrap();
   }, [bootstrap]);
 
   const setSession = useCallback((token: string, nextUser: AdminUser) => {
     setToken(token);
+    setStoredUser(nextUser);
     setUser(nextUser);
   }, []);
 
   const updateUser = useCallback((nextUser: AdminUser) => {
+    setStoredUser(nextUser);
     setUser(nextUser);
   }, []);
 
@@ -72,16 +100,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const token = getToken();
 
     if (!token) {
+      clearSession();
       setUser(null);
       return;
     }
 
     try {
       const response = await getMe(token);
-      setUser(response.data);
+      const nextUser = parseAdminUser(response);
+
+      if (!nextUser) {
+        clearSession();
+        setUser(null);
+        return;
+      }
+
+      setStoredUser(nextUser);
+      setUser(nextUser);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
-        clearToken();
+        clearSession();
       }
       setUser(null);
       throw error;
@@ -99,7 +137,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    clearToken();
+    clearSession();
     setUser(null);
     router.replace("/login");
   }, [router]);

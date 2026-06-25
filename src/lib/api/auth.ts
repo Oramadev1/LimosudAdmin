@@ -1,6 +1,26 @@
 import { apiFetch } from "@/lib/api/client";
 import { withAuth } from "@/lib/api/authenticated";
-import type { LoginResponse, MeResponse, UpdateProfilePayload } from "@/types/api";
+import type { AdminUser, LoginResponse, MeResponse, UpdateProfilePayload } from "@/types/api";
+
+export function parseAdminUser(payload: unknown): AdminUser | null {
+  if (!payload || typeof payload !== "object") {
+    return null;
+  }
+
+  if ("data" in payload) {
+    const wrapped = (payload as MeResponse).data;
+
+    if (wrapped && typeof wrapped === "object" && "email" in wrapped) {
+      return wrapped;
+    }
+  }
+
+  if ("email" in payload && "id" in payload) {
+    return payload as AdminUser;
+  }
+
+  return null;
+}
 
 export function login(email: string, password: string) {
   return apiFetch<LoginResponse>("/admin/auth/login", {
