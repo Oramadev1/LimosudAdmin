@@ -1,8 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
-import { Shield } from "lucide-react";
+// import { Shield } from "lucide-react";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import { updateProfile } from "@/lib/api/auth";
@@ -12,11 +11,11 @@ import type { UpdateProfilePayload } from "@/types/api";
 import { AdminFormField, ErrorMessage, PageHeader } from "@/components/ui/AdminUi";
 
 export function ProfileClient() {
-  const { user, updateUser, hasPermission } = useAuth();
-  const canManageTeam =
-    user?.roles.some((role) => role.slug === "super_admin") ||
-    hasPermission("users.view") ||
-    hasPermission("permissions.assign");
+  const { user, updateUser } = useAuth();
+  // const canManageTeam =
+  //   user?.roles.some((role) => role.slug === "super_admin") ||
+  //   hasPermission("users.view") ||
+  //   hasPermission("permissions.assign");
   const [profileError, setProfileError] = useState<string | null>(null);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
@@ -207,6 +206,7 @@ export function ProfileClient() {
             </p>
           </div>
 
+          {/* Hidden for now — re-enable when Team management is needed
           {canManageTeam ? (
             <Link
               href="/users"
@@ -216,6 +216,7 @@ export function ProfileClient() {
               Manage team & permissions
             </Link>
           ) : null}
+          */}
         </aside>
       </div>
 
