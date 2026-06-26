@@ -1,6 +1,13 @@
 import { getMe, parseAdminUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
-import { clearSession, getStoredUser, getToken, setStoredUser } from "@/lib/auth/token";
+import {
+  canUseCachedSessionWithoutMe,
+  clearSession,
+  getStoredUser,
+  getToken,
+  markMeValidated,
+  setStoredUser,
+} from "@/lib/auth/token";
 import type { AdminUser } from "@/types/api";
 
 let bootstrapPromise: Promise<AdminUser | null> | null = null;
@@ -21,6 +28,10 @@ export function restoreAdminSession(): Promise<AdminUser | null> {
 
     const cachedUser = getStoredUser();
 
+    if (canUseCachedSessionWithoutMe()) {
+      return cachedUser;
+    }
+
     try {
       const response = await getMe(token);
       const nextUser = parseAdminUser(response);
@@ -31,6 +42,7 @@ export function restoreAdminSession(): Promise<AdminUser | null> {
       }
 
       setStoredUser(nextUser);
+      markMeValidated();
       return nextUser;
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -38,7 +50,11 @@ export function restoreAdminSession(): Promise<AdminUser | null> {
         return null;
       }
 
-      return cachedUser;
+      if (cachedUser) {
+        return cachedUser;
+      }
+
+      return null;
     } finally {
       bootstrapPromise = null;
     }

@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState, type ChangeEvent } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import { AdminImageThumb } from "@/components/ui/AdminImageThumb";
@@ -25,6 +25,7 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { slugify } from "@/lib/format";
 import { storageUrl } from "@/lib/images";
+import { usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { VehicleBrand } from "@/types/api";
 
@@ -42,11 +43,10 @@ export default function VehicleBrandsPage() {
   const [editingBrand, setEditingBrand] = useState<VehicleBrand | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const { data, isPending, isFetching, error } = useQuery({
-    queryKey: queryKeys.vehicleBrands(page),
-    queryFn: () => getVehicleBrands(page),
-    placeholderData: keepPreviousData,
-  });
+  const { data, isPending, isFetching, error } = usePaginatedQuery(
+    queryKeys.vehicleBrands(page),
+    () => getVehicleBrands(page),
+  );
 
   const invalidateBrands = () => {
     queryClient.invalidateQueries({ queryKey: ["vehicle-brands"] });

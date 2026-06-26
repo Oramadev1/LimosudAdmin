@@ -18,6 +18,7 @@ import {
   clearSession,
   getStoredUser,
   getToken,
+  markMeValidated,
   setStoredUser,
   setToken,
 } from "@/lib/auth/token";
@@ -58,6 +59,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const setSession = useCallback((token: string, nextUser: AdminUser) => {
     setToken(token);
     setStoredUser(nextUser);
+    markMeValidated();
     setUser(nextUser);
   }, []);
 
@@ -86,6 +88,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       }
 
       setStoredUser(nextUser);
+      markMeValidated();
       setUser(nextUser);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {

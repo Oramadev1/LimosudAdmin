@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
@@ -14,7 +14,7 @@ import { ApiError, isValidationError } from "@/lib/api/client";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
 import { canRecordPayment } from "@/lib/reservation-workflow";
-import { useLookupsQuery } from "@/lib/query/hooks";
+import { useAdminQuery, useLookupsQuery, usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import {
   AdminCollapsibleFormCard,
@@ -46,13 +46,12 @@ export default function PaymentsPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
 
-  const { data, isPending, isFetching, error } = useQuery({
-    queryKey: queryKeys.payments(page),
-    queryFn: () => getPayments(page),
-    placeholderData: keepPreviousData,
-  });
+  const { data, isPending, isFetching, error } = usePaginatedQuery(
+    queryKeys.payments(page),
+    () => getPayments(page),
+  );
 
-  const { data: reservations } = useQuery({
+  const { data: reservations } = useAdminQuery({
     queryKey: [...queryKeys.reservations(1), "payable"],
     queryFn: () => getReservations(1, 100),
   });

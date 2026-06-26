@@ -2,8 +2,11 @@ import type { AdminUser } from "@/types/api";
 
 const TOKEN_KEY = "limosud_admin_token";
 const USER_KEY = "limosud_admin_user";
+const ME_VALIDATED_AT_KEY = "limosud_admin_me_at";
 const TOKEN_COOKIE = "limosud_admin_token";
 const TOKEN_MAX_AGE_DAYS = 7;
+/** Skip /auth/me for this long after a successful validation (rapid reload protection). */
+export const ME_VALIDATION_COOLDOWN_MS = 20_000;
 
 function setCookie(name: string, value: string): void {
   const expires = new Date(
@@ -74,7 +77,25 @@ export function clearStoredUser(): void {
   localStorage.removeItem(USER_KEY);
 }
 
+export function clearMeValidatedAt(): void {
+  sessionStorage.removeItem(ME_VALIDATED_AT_KEY);
+}
+
+export function markMeValidated(): void {
+  sessionStorage.setItem(ME_VALIDATED_AT_KEY, String(Date.now()));
+}
+
+export function canUseCachedSessionWithoutMe(): boolean {
+  if (!getToken() || !getStoredUser()) {
+    return false;
+  }
+
+  const validatedAt = Number(sessionStorage.getItem(ME_VALIDATED_AT_KEY) || 0);
+  return validatedAt > 0 && Date.now() - validatedAt < ME_VALIDATION_COOLDOWN_MS;
+}
+
 export function clearSession(): void {
   clearToken();
   clearStoredUser();
+  clearMeValidatedAt();
 }

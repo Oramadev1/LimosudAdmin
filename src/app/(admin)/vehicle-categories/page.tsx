@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
@@ -21,6 +21,7 @@ import {
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { slugify } from "@/lib/format";
+import { usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { VehicleCategory } from "@/types/api";
 
@@ -35,11 +36,10 @@ export default function VehicleCategoriesPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
-  const { data, isPending, isFetching, error } = useQuery({
-    queryKey: queryKeys.vehicleCategories(page),
-    queryFn: () => getVehicleCategories(page),
-    placeholderData: keepPreviousData,
-  });
+  const { data, isPending, isFetching, error } = usePaginatedQuery(
+    queryKeys.vehicleCategories(page),
+    () => getVehicleCategories(page),
+  );
 
   const saveMutation = useLockedMutation({
     mutationFn: (payload: {

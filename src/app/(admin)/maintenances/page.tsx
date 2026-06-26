@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { keepPreviousData, useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/lib/api/admin";
 import { ApiError, isValidationError } from "@/lib/api/client";
 import { formatCurrency, formatDateTime } from "@/lib/format";
-import { useLookupsQuery } from "@/lib/query/hooks";
+import { useAdminQuery, useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Maintenance } from "@/types/api";
 import {
@@ -48,9 +48,9 @@ export default function MaintenancesPage() {
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
 
-  const { data: vehicles } = useQuery({ queryKey: queryKeys.vehicles(1), queryFn: () => getVehicles(1) });
+  const { data: vehicles } = useAdminQuery({ queryKey: queryKeys.vehicles(1), queryFn: () => getVehicles(1) });
 
-  const { data, isPending, isFetching, error } = useQuery({
+  const { data, isPending, isFetching, error } = useAdminQuery({
     queryKey: view === "upcoming" ? queryKeys.upcomingMaintenances(page) : queryKeys.maintenances(page),
     queryFn: () => (view === "upcoming" ? getUpcomingMaintenances(page) : getMaintenances(page)),
     placeholderData: keepPreviousData,

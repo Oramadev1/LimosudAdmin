@@ -2,18 +2,17 @@
 
 import Link from "next/link";
 import { Bell } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
 
 import { getPendingAlerts } from "@/lib/api/admin";
 import { useAuthReady } from "@/lib/auth/use-auth-ready";
+import { useAdminQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 
 export function AlertBellButton() {
   const authReady = useAuthReady();
-  const { data } = useQuery({
+  const { data } = useAdminQuery({
     queryKey: queryKeys.pendingAlerts(1),
     queryFn: () => getPendingAlerts(1),
-    enabled: authReady,
     refetchInterval: authReady ? 30_000 : false,
   });
 

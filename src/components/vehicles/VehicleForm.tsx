@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 import { useRouter } from "next/navigation";
 
@@ -15,7 +15,7 @@ import { ApiError, isValidationError } from "@/lib/api/client";
 import { slugify } from "@/lib/format";
 import { storageUrl } from "@/lib/images";
 import { useSubmitLock } from "@/lib/use-submit-lock";
-import { useLookupsQuery } from "@/lib/query/hooks";
+import { useAdminQuery, useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { CreateVehiclePayload } from "@/types/api";
 import { AdminFormField, ErrorMessage } from "@/components/ui/AdminUi";
@@ -68,7 +68,7 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
     data: vehicleResponse,
     isPending: vehicleLoading,
     error: vehicleError,
-  } = useQuery({
+  } = useAdminQuery({
     queryKey: queryKeys.vehicle(vehicleId ?? 0),
     queryFn: () => getVehicle(vehicleId!),
     enabled: Boolean(vehicleId),

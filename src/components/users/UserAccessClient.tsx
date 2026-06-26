@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useEffect, useMemo, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
@@ -14,6 +14,7 @@ import {
   updateUser,
 } from "@/lib/api/admin";
 import { ApiError, isValidationError } from "@/lib/api/client";
+import { useAdminQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Permission } from "@/types/api";
 import { AdminFormField, ErrorMessage, PageHeader } from "@/components/ui/AdminUi";
@@ -36,18 +37,18 @@ export function UserAccessClient({ id }: { id: number }) {
     is_active: true,
   });
 
-  const { data, isPending, error, dataUpdatedAt } = useQuery({
+  const { data, isPending, error, dataUpdatedAt } = useAdminQuery({
     queryKey: queryKeys.user(id),
     queryFn: () => getUser(id),
   });
 
-  const { data: rolesData, dataUpdatedAt: rolesUpdatedAt } = useQuery({
+  const { data: rolesData, dataUpdatedAt: rolesUpdatedAt } = useAdminQuery({
     queryKey: queryKeys.roles,
     queryFn: getRoles,
     enabled: canAssign,
   });
 
-  const { data: permissionsData, dataUpdatedAt: permissionsUpdatedAt } = useQuery({
+  const { data: permissionsData, dataUpdatedAt: permissionsUpdatedAt } = useAdminQuery({
     queryKey: queryKeys.permissions,
     queryFn: getPermissions,
     enabled: canAssign,

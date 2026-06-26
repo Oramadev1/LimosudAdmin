@@ -3,11 +3,12 @@
 import Link from "next/link";
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import { getCustomer, updateCustomer } from "@/lib/api/admin";
 import { ApiError, isValidationError } from "@/lib/api/client";
+import { useAdminQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { CreateCustomerPayload } from "@/types/api";
 import { AdminFormField, ErrorMessage, PageHeader } from "@/components/ui/AdminUi";
@@ -27,7 +28,7 @@ export function CustomerEditClient({ id }: { id: number }) {
     driving_license_number: "",
   });
 
-  const { data, isPending, error } = useQuery({
+  const { data, isPending, error } = useAdminQuery({
     queryKey: queryKeys.customer(id),
     queryFn: () => getCustomer(id),
   });

@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useQuery } from "@tanstack/react-query";
 
 import { getCustomer } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
@@ -10,13 +9,14 @@ import {
   getPaymentStatusBadgeClass,
   getReservationStatusBadgeClass,
 } from "@/lib/reservation-status";
+import { useAdminQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { CustomerDetailResponse } from "@/types/api";
 import { DetailRow, ErrorMessage, SectionCard, StatCard } from "@/components/ui/AdminUi";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 
 export function CustomerDetailClient({ id }: { id: number }) {
-  const { data, isPending, error } = useQuery<CustomerDetailResponse>({
+  const { data, isPending, error } = useAdminQuery<CustomerDetailResponse>({
     queryKey: queryKeys.customer(id),
     queryFn: () => getCustomer(id),
   });

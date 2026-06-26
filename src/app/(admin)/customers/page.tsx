@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useRef, useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
@@ -11,6 +11,7 @@ import {
   getCustomers,
 } from "@/lib/api/admin";
 import { ApiError, isValidationError } from "@/lib/api/client";
+import { usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Customer } from "@/types/api";
 import {
@@ -39,11 +40,10 @@ export default function CustomersPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
 
-  const { data, isPending, isFetching, error } = useQuery({
-    queryKey: queryKeys.customers(page),
-    queryFn: () => getCustomers(page),
-    placeholderData: keepPreviousData,
-  });
+  const { data, isPending, isFetching, error } = usePaginatedQuery(
+    queryKeys.customers(page),
+    () => getCustomers(page),
+  );
 
   const saveMutation = useLockedMutation({
     mutationFn: createCustomer,

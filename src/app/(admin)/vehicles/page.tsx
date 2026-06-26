@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useMemo, useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import { AdminImageThumb } from "@/components/ui/AdminImageThumb";
@@ -12,7 +12,7 @@ import { deleteVehicle, getVehicles, updateVehicle } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { formatCurrency } from "@/lib/format";
 import { getVehiclePrimaryPhotoUrl } from "@/lib/images";
-import { useLookupsQuery } from "@/lib/query/hooks";
+import { useLookupsQuery, usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import {
   EmptyState,
@@ -29,11 +29,10 @@ export default function VehiclesPageClient() {
   const [page, setPage] = useState(1);
   const [query, setQuery] = useState("");
 
-  const { data, isPending, isFetching, error } = useQuery({
-    queryKey: queryKeys.vehicles(page),
-    queryFn: () => getVehicles(page),
-    placeholderData: keepPreviousData,
-  });
+  const { data, isPending, isFetching, error } = usePaginatedQuery(
+    queryKeys.vehicles(page),
+    () => getVehicles(page),
+  );
 
   const deleteMutation = useLockedMutation({
     mutationFn: deleteVehicle,

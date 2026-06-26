@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
@@ -14,7 +14,7 @@ import {
 } from "@/lib/api/admin";
 import { ApiError, isValidationError } from "@/lib/api/client";
 import { formatCurrency, formatDateTime } from "@/lib/format";
-import { useLookupsQuery } from "@/lib/query/hooks";
+import { useAdminQuery, useLookupsQuery, usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Expense } from "@/types/api";
 import {
@@ -45,15 +45,14 @@ export default function ExpensesPage() {
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [form, setForm] = useState(emptyForm);
 
-  const { data: vehicles } = useQuery({ queryKey: queryKeys.vehicles(1), queryFn: () => getVehicles(1) });
+  const { data: vehicles } = useAdminQuery({ queryKey: queryKeys.vehicles(1), queryFn: () => getVehicles(1) });
 
-  const { data, isPending, isFetching, error } = useQuery({
-    queryKey: queryKeys.expenses(page),
-    queryFn: () => getExpenses(page),
-    placeholderData: keepPreviousData,
-  });
+  const { data, isPending, isFetching, error } = usePaginatedQuery(
+    queryKeys.expenses(page),
+    () => getExpenses(page),
+  );
 
-  const { data: summary } = useQuery({
+  const { data: summary } = useAdminQuery({
     queryKey: queryKeys.expenseSummary(),
     queryFn: () => getExpenseMonthlySummary(),
   });

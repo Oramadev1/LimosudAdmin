@@ -2,7 +2,6 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { keepPreviousData, useQuery } from "@tanstack/react-query";
 
 import { getReservations } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
@@ -11,6 +10,7 @@ import {
   getPaymentStatusBadgeClass,
   getReservationStatusBadgeClass,
 } from "@/lib/reservation-status";
+import { usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import { EmptyState, ErrorMessage, PageHeader, Pagination } from "@/components/ui/AdminUi";
 import { StatusBadge } from "@/components/ui/StatusBadge";
@@ -29,11 +29,10 @@ export default function ReservationsPage() {
   const [page, setPage] = useState(1);
   const [statusFilter, setStatusFilter] = useState<(typeof STATUS_FILTERS)[number]["slug"]>("all");
 
-  const { data, isPending, isFetching, error } = useQuery({
-    queryKey: queryKeys.reservations(page),
-    queryFn: () => getReservations(page),
-    placeholderData: keepPreviousData,
-  });
+  const { data, isPending, isFetching, error } = usePaginatedQuery(
+    queryKeys.reservations(page),
+    () => getReservations(page),
+  );
 
   const reservations = data?.data ?? [];
   const filteredReservations =

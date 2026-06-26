@@ -3,7 +3,6 @@
 import { FormEvent, useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useSubmitLock } from "@/lib/use-submit-lock";
-import { useQuery } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import { RentalPeriodFields } from "@/components/reservations/RentalPeriodFields";
@@ -17,6 +16,7 @@ import {
 } from "@/lib/api/admin";
 import { ApiError, isValidationError } from "@/lib/api/client";
 import { toApiDatetime } from "@/lib/format";
+import { useAdminQuery } from "@/lib/query/hooks";
 import { ErrorMessage, PageHeader } from "@/components/ui/AdminUi";
 import type { ReservationAvailabilityResult } from "@/types/api";
 
@@ -41,10 +41,10 @@ export default function NewReservationPage() {
     Boolean(form.start_datetime && form.end_datetime) &&
     new Date(form.end_datetime) > new Date(form.start_datetime);
 
-  const { data: customers } = useQuery({ queryKey: ["customers", 1], queryFn: () => getCustomers(1) });
-  const { data: vehicles } = useQuery({ queryKey: ["vehicles", 1], queryFn: () => getVehicles(1) });
-  const { data: locations } = useQuery({ queryKey: ["locations", 1], queryFn: () => getLocations(1) });
-  const { data: vehicleSchedule } = useQuery({
+  const { data: customers } = useAdminQuery({ queryKey: ["customers", 1], queryFn: () => getCustomers(1) });
+  const { data: vehicles } = useAdminQuery({ queryKey: ["vehicles", 1], queryFn: () => getVehicles(1) });
+  const { data: locations } = useAdminQuery({ queryKey: ["locations", 1], queryFn: () => getLocations(1) });
+  const { data: vehicleSchedule } = useAdminQuery({
     queryKey: ["vehicle-availability-schedule", vehicleId],
     queryFn: () => getVehicleAvailabilitySchedule(vehicleId!),
     enabled: vehicleId !== null,

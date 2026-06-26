@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
@@ -12,6 +12,7 @@ import {
 } from "@/lib/api/admin";
 import { ApiError, isValidationError } from "@/lib/api/client";
 import { slugify } from "@/lib/format";
+import { usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Location } from "@/types/api";
 import {
@@ -41,11 +42,10 @@ export default function LocationsPage() {
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
 
-  const { data, isPending, isFetching, error } = useQuery({
-    queryKey: queryKeys.locations(page),
-    queryFn: () => getLocations(page),
-    placeholderData: keepPreviousData,
-  });
+  const { data, isPending, isFetching, error } = usePaginatedQuery(
+    queryKeys.locations(page),
+    () => getLocations(page),
+  );
 
   const saveMutation = useLockedMutation({
     mutationFn: (payload: Parameters<typeof createLocation>[0] & { id?: number }) => {

@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { FormEvent, useRef, useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
@@ -21,7 +21,7 @@ import {
   getAlertTypeBadgeClass,
 } from "@/lib/alert-styles";
 import { formatDateTime } from "@/lib/format";
-import { useLookupsQuery } from "@/lib/query/hooks";
+import { useAdminQuery, useLookupsQuery, usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import {
   AdminCollapsibleFormCard,
@@ -53,15 +53,14 @@ export default function AlertsPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
 
-  const { data: vehicles } = useQuery({ queryKey: queryKeys.vehicles(1), queryFn: () => getVehicles(1) });
+  const { data: vehicles } = useAdminQuery({ queryKey: queryKeys.vehicles(1), queryFn: () => getVehicles(1) });
 
-  const { data, isPending, isFetching, error } = useQuery({
-    queryKey: queryKeys.alerts(page),
-    queryFn: () => getAlerts(page),
-    placeholderData: keepPreviousData,
-  });
+  const { data, isPending, isFetching, error } = usePaginatedQuery(
+    queryKeys.alerts(page),
+    () => getAlerts(page),
+  );
 
-  const { data: pendingData } = useQuery({
+  const { data: pendingData } = useAdminQuery({
     queryKey: queryKeys.pendingAlerts(1),
     queryFn: () => getPendingAlerts(1),
   });

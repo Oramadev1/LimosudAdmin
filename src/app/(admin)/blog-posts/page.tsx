@@ -1,7 +1,7 @@
 "use client";
 
 import { FormEvent, useRef, useState } from "react";
-import { keepPreviousData, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
@@ -13,6 +13,7 @@ import {
 } from "@/lib/api/admin";
 import { ApiError, isValidationError } from "@/lib/api/client";
 import { slugify } from "@/lib/format";
+import { usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { BlogPost } from "@/types/api";
 import {
@@ -44,11 +45,10 @@ export default function BlogPostsPage() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
 
-  const { data, isPending, isFetching, error } = useQuery({
-    queryKey: queryKeys.blogPosts(page),
-    queryFn: () => getBlogPosts(page),
-    placeholderData: keepPreviousData,
-  });
+  const { data, isPending, isFetching, error } = usePaginatedQuery(
+    queryKeys.blogPosts(page),
+    () => getBlogPosts(page),
+  );
 
   const saveMutation = useLockedMutation({
     mutationFn: async (payload: typeof form & { id?: number }) => {

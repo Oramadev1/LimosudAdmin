@@ -2,21 +2,21 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Shield } from "lucide-react";
 
 import { getUsers } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
+import { usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import { EmptyState, ErrorMessage, PageHeader, Pagination } from "@/components/ui/AdminUi";
 
 export default function UsersPage() {
   const [page, setPage] = useState(1);
 
-  const { data, isPending, error } = useQuery({
-    queryKey: queryKeys.users(page),
-    queryFn: () => getUsers(page),
-  });
+  const { data, isPending, error } = usePaginatedQuery(
+    queryKeys.users(page),
+    () => getUsers(page),
+  );
 
   return (
     <div>

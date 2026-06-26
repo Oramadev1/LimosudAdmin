@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { FormEvent, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
@@ -35,7 +35,7 @@ import {
   getReservationStatusHint,
   hasRemainingPayment,
 } from "@/lib/reservation-workflow";
-import { useLookupsQuery } from "@/lib/query/hooks";
+import { useAdminQuery, useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import { useSubmitLock } from "@/lib/use-submit-lock";
 import { AdminFormField, DetailRow, ErrorMessage, SectionCard } from "@/components/ui/AdminUi";
@@ -62,18 +62,18 @@ export function ReservationDetailClient({ id }: { id: number }) {
     notes: "",
   });
 
-  const { data, isPending } = useQuery({
+  const { data, isPending } = useAdminQuery({
     queryKey: queryKeys.reservation(id),
     queryFn: () => getReservation(id),
   });
 
-  const { data: paymentSummary } = useQuery({
+  const { data: paymentSummary } = useAdminQuery({
     queryKey: queryKeys.paymentSummary(id),
     queryFn: () => getPaymentSummary(id),
     enabled: Boolean(data),
   });
 
-  const { data: contractData, refetch: refetchContract } = useQuery({
+  const { data: contractData, refetch: refetchContract } = useAdminQuery({
     queryKey: queryKeys.contract(id),
     queryFn: () => getContractByReservation(id),
     enabled: hasPermission("contracts.view"),
