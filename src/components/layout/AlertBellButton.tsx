@@ -5,13 +5,16 @@ import { Bell } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 import { getPendingAlerts } from "@/lib/api/admin";
+import { useAuthReady } from "@/lib/auth/use-auth-ready";
 import { queryKeys } from "@/lib/query/keys";
 
 export function AlertBellButton() {
+  const authReady = useAuthReady();
   const { data } = useQuery({
     queryKey: queryKeys.pendingAlerts(1),
     queryFn: () => getPendingAlerts(1),
-    refetchInterval: 30_000,
+    enabled: authReady,
+    refetchInterval: authReady ? 30_000 : false,
   });
 
   const count = data?.meta.total ?? data?.data.length ?? 0;

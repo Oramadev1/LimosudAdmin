@@ -12,6 +12,7 @@ import {
 import { useRouter } from "next/navigation";
 
 import { getMe, logout as logoutRequest, parseAdminUser } from "@/lib/api/auth";
+import { restoreAdminSession } from "@/lib/auth/bootstrap";
 import { ApiError } from "@/lib/api/client";
 import {
   clearSession,
@@ -40,45 +41,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const bootstrap = useCallback(async () => {
-    const token = getToken();
-
-    if (!token) {
-      clearSession();
-      setUser(null);
-      setLoading(false);
-      return;
-    }
-
     const cachedUser = getStoredUser();
     if (cachedUser) {
       setUser(cachedUser);
     }
 
-    try {
-      const response = await getMe(token);
-      const nextUser = parseAdminUser(response);
-
-      if (!nextUser) {
-        clearSession();
-        setUser(null);
-        return;
-      }
-
-      setStoredUser(nextUser);
-      setUser(nextUser);
-    } catch (error) {
-      if (error instanceof ApiError && error.status === 401) {
-        clearSession();
-        setUser(null);
-        return;
-      }
-
-      if (!cachedUser) {
-        setUser(null);
-      }
-    } finally {
-      setLoading(false);
-    }
+    const nextUser = await restoreAdminSession();
+    setUser(nextUser);
+    setLoading(false);
   }, []);
 
   useEffect(() => {

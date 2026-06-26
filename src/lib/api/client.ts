@@ -13,7 +13,9 @@ export class ApiError extends Error {
         "message" in body &&
         typeof (body as ApiValidationError).message === "string"
         ? (body as ApiValidationError).message
-        : `API request failed with status ${status}`,
+        : status === 429
+          ? "Too many requests. Please wait a moment and refresh."
+          : `API request failed with status ${status}`,
     );
     this.status = status;
     this.body = body;

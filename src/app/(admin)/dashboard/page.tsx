@@ -2,31 +2,33 @@
 
 import { useQuery } from "@tanstack/react-query";
 
-import {
-  getDashboardExpensesReport,
-  getDashboardRevenue,
-  getDashboardStatistics,
-} from "@/lib/api/admin";
+import { getDashboardExpensesReport, getDashboardRevenue, getDashboardStatistics } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
+import { useAuthReady } from "@/lib/auth/use-auth-ready";
 import { formatCurrency } from "@/lib/format";
 import { queryKeys } from "@/lib/query/keys";
 import { AlertBellButton } from "@/components/layout/AlertBellButton";
 import { ErrorMessage, PageHeader, StatCard } from "@/components/ui/AdminUi";
 
 export default function DashboardPage() {
+  const authReady = useAuthReady();
+
   const { data: stats, isPending, error } = useQuery({
     queryKey: queryKeys.dashboard(),
     queryFn: () => getDashboardStatistics(),
+    enabled: authReady,
   });
 
   const { data: revenue } = useQuery({
     queryKey: queryKeys.dashboardRevenue(),
     queryFn: () => getDashboardRevenue(),
+    enabled: authReady,
   });
 
   const { data: expensesReport } = useQuery({
     queryKey: queryKeys.dashboardExpenses(),
     queryFn: () => getDashboardExpensesReport(),
+    enabled: authReady,
   });
 
   const errorMessage =
