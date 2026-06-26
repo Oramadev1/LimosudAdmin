@@ -14,14 +14,7 @@ import { useRouter } from "next/navigation";
 import { getMe, logout as logoutRequest, parseAdminUser } from "@/lib/api/auth";
 import { restoreAdminSession } from "@/lib/auth/bootstrap";
 import { ApiError } from "@/lib/api/client";
-import {
-  clearSession,
-  getStoredUser,
-  getToken,
-  markMeValidated,
-  setStoredUser,
-  setToken,
-} from "@/lib/auth/token";
+import { clearSession, getToken, purgeLegacyAuthStorage, setToken } from "@/lib/auth/token";
 import type { AdminUser } from "@/types/api";
 
 type AuthContextValue = {
@@ -41,12 +34,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const bootstrap = useCallback(async () => {
-    const cachedUser = getStoredUser();
-    if (cachedUser) {
-      setUser(cachedUser);
-    }
+  useEffect(() => {
+    purgeLegacyAuthStorage();
+  }, []);
 
+  const bootstrap = useCallback(async () => {
     const nextUser = await restoreAdminSession();
     setUser(nextUser);
     setLoading(false);
@@ -58,13 +50,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const setSession = useCallback((token: string, nextUser: AdminUser) => {
     setToken(token);
-    setStoredUser(nextUser);
-    markMeValidated();
     setUser(nextUser);
   }, []);
 
   const updateUser = useCallback((nextUser: AdminUser) => {
-    setStoredUser(nextUser);
     setUser(nextUser);
   }, []);
 
@@ -87,8 +76,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return;
       }
 
-      setStoredUser(nextUser);
-      markMeValidated();
       setUser(nextUser);
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {

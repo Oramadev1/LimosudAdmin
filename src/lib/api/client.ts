@@ -1,5 +1,4 @@
-import { siteConfig } from "@/config/site";
-import { resolveApiUrl } from "@/lib/api/base-url";
+import { resolveApiUrl } from "@/lib/api/base-url";import { apiRequest } from "@/lib/api/request";
 import type { ApiValidationError } from "@/types/api";
 
 export class ApiError extends Error {
@@ -51,7 +50,7 @@ export async function apiFetch<T>(
     requestInit.method === "PATCH" ||
     requestInit.method === "DELETE";
 
-  const response = await fetch(url, {
+  const response = await apiRequest(url, {
     ...requestInit,
     headers: {
       Accept: "application/json",
