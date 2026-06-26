@@ -1,7 +1,6 @@
 import { getToken } from "@/lib/auth/token";
 import { resolveApiUrl } from "@/lib/api/base-url";
 import { apiFetch, ApiError } from "@/lib/api/client";
-import { apiRequest } from "@/lib/api/request";
 
 export function withAuth<T>(
   path: string,
@@ -45,7 +44,7 @@ export async function withAuthBlob(
     throw new Error("Missing authentication token.");
   }
 
-  const response = await apiRequest(resolveApiUrl(path), {
+  const response = await fetch(resolveApiUrl(path), {
     ...init,
     headers: {
       Accept: "application/json",

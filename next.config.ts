@@ -21,11 +21,9 @@ const nextConfig: NextConfig = {
     const upstream = laravelApiUrl.replace(/\/$/, "");
     const storageOrigin = upstream.replace(/\/api\/?$/, "");
 
+    // Only proxy /storage for legacy setups using NEXT_PUBLIC_API_URL=/api.
+    // API calls should go directly to LARAVEL_API_URL (see .env.example).
     return [
-      {
-        source: "/api/:path*",
-        destination: `${upstream}/:path*`,
-      },
       {
         source: "/storage/:path*",
         destination: `${storageOrigin}/storage/:path*`,

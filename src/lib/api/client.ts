@@ -1,4 +1,4 @@
-import { resolveApiUrl } from "@/lib/api/base-url";import { apiRequest } from "@/lib/api/request";
+import { resolveApiUrl } from "@/lib/api/base-url";
 import type { ApiValidationError } from "@/types/api";
 
 export class ApiError extends Error {
@@ -50,7 +50,7 @@ export async function apiFetch<T>(
     requestInit.method === "PATCH" ||
     requestInit.method === "DELETE";
 
-  const response = await apiRequest(url, {
+  const response = await fetch(url, {
     ...requestInit,
     headers: {
       Accept: "application/json",
