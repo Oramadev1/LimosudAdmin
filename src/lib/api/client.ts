@@ -1,3 +1,4 @@
+import axios, { isAxiosError, type AxiosRequestConfig } from "axios";
 import { resolveApiUrl } from "@/lib/api/base-url";
 import type { ApiValidationError } from "@/types/api";
 
@@ -32,37 +33,104 @@ export function isValidationError(
   );
 }
 
+const apiClient = axios.create({
+  headers: {
+    Accept: "application/json",
+  },
+  withCredentials: true,
+});
+
+function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
+  if (!headers) {
+    return {};
+  }
+
+  if (headers instanceof Headers) {
+    return Object.fromEntries(headers.entries());
+  }
+
+  if (Array.isArray(headers)) {
+    return Object.fromEntries(headers);
+  }
+
+  return headers;
+}
+
+function toAxiosConfig(path: string, init: RequestInit = {}): AxiosRequestConfig {
+  const method = (init.method ?? "GET").toUpperCase();
+  const headers = normalizeHeaders(init.headers);
+
+  return {
+    url: resolveApiUrl(path),
+    method,
+    headers,
+    data: init.body ?? undefined,
+    withCredentials: true,
+    validateStatus: () => true,
+  };
+}
+
+function mapAxiosError(error: unknown): never {
+  if (error instanceof ApiError) {
+    throw error;
+  }
+
+  if (isAxiosError(error) && !error.response) {
+    throw new ApiError(0, {
+      message: "Unable to reach the API. Check your connection and API configuration.",
+    });
+  }
+
+  throw error;
+}
+
 export async function apiFetch<T>(
   path: string,
   init: RequestInit = {},
 ): Promise<T> {
-  const url = resolveApiUrl(path);
+  try {
+    const response = await apiClient.request<T>(toAxiosConfig(path, init));
 
-  const isDynamic =
-    init.cache === "no-store" ||
-    init.method === "POST" ||
-    init.method === "PUT" ||
-    init.method === "PATCH" ||
-    init.method === "DELETE";
+    if (response.status < 200 || response.status >= 300) {
+      throw new ApiError(response.status, response.data);
+    }
 
-  const response = await fetch(url, {
-    ...init,
-    credentials: "include",
-    headers: {
-      Accept: "application/json",
-      ...init.headers,
-    },
-    ...(isDynamic ? { cache: "no-store" as const } : { next: { revalidate: 0 } }),
-  });
+    if (response.status === 204) {
+      return null as T;
+    }
 
-  if (!response.ok) {
-    const body = await response.json().catch(() => null);
-    throw new ApiError(response.status, body);
+    return response.data;
+  } catch (error) {
+    mapAxiosError(error);
   }
+}
 
-  if (response.status === 204) {
-    return null as T;
+export async function apiFetchBlob(
+  path: string,
+  init: RequestInit = {},
+): Promise<Blob> {
+  try {
+    const response = await apiClient.request<Blob>({
+      ...toAxiosConfig(path, init),
+      responseType: "blob",
+    });
+
+    if (response.status < 200 || response.status >= 300) {
+      let body: unknown = null;
+
+      if (response.data instanceof Blob) {
+        try {
+          body = JSON.parse(await response.data.text());
+        } catch {
+          body = null;
+        }
+      }
+
+      throw new ApiError(response.status, body);
+    }
+
+    return response.data;
+  } catch (error) {
+    mapAxiosError(error);
   }
-
-  return response.json() as Promise<T>;
 }
