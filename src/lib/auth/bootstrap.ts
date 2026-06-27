@@ -1,6 +1,6 @@
 import { getMe, parseAdminUser } from "@/lib/api/auth";
 import { ApiError } from "@/lib/api/client";
-import { clearSession, getToken } from "@/lib/auth/token";
+import { clearSession } from "@/lib/auth/session";
 import type { AdminUser } from "@/types/api";
 
 let bootstrapPromise: Promise<AdminUser | null> | null = null;
@@ -12,15 +12,8 @@ export function restoreAdminSession(): Promise<AdminUser | null> {
   }
 
   bootstrapPromise = (async () => {
-    const token = getToken();
-
-    if (!token) {
-      clearSession();
-      return null;
-    }
-
     try {
-      const response = await getMe(token);
+      const response = await getMe();
       const nextUser = parseAdminUser(response);
 
       if (!nextUser) {

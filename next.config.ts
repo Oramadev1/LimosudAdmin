@@ -21,14 +21,27 @@ const nextConfig: NextConfig = {
     const upstream = laravelApiUrl.replace(/\/$/, "");
     const storageOrigin = upstream.replace(/\/api\/?$/, "");
 
-    // Only proxy /storage for legacy setups using NEXT_PUBLIC_API_URL=/api.
-    // API calls should go directly to LARAVEL_API_URL (see .env.example).
-    return [
-      {
-        source: "/storage/:path*",
-        destination: `${storageOrigin}/storage/:path*`,
-      },
-    ];
+    // Optional /storage proxy when NEXT_PUBLIC_API_URL=/api (legacy)
+    const publicApiUrl = (process.env.NEXT_PUBLIC_API_URL ?? "").replace(/\/$/, "");
+    const useApiProxy =
+      publicApiUrl === "/api" ||
+      (publicApiUrl.endsWith("/api") && !publicApiUrl.startsWith("http"));
+
+    const rewrites = [];
+
+    if (useApiProxy) {
+      rewrites.push({
+        source: "/api/:path*",
+        destination: `${upstream}/:path*`,
+      });
+    }
+
+    rewrites.push({
+      source: "/storage/:path*",
+      destination: `${storageOrigin}/storage/:path*`,
+    });
+
+    return rewrites;
   },
   turbopack: {
     root: import.meta.dirname,

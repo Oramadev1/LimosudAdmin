@@ -14,13 +14,13 @@ import { useRouter } from "next/navigation";
 import { getMe, logout as logoutRequest, parseAdminUser } from "@/lib/api/auth";
 import { restoreAdminSession } from "@/lib/auth/bootstrap";
 import { ApiError } from "@/lib/api/client";
-import { clearSession, getToken, purgeLegacyAuthStorage, setToken } from "@/lib/auth/token";
+import { clearSession, purgeLegacyAuthStorage } from "@/lib/auth/session";
 import type { AdminUser } from "@/types/api";
 
 type AuthContextValue = {
   user: AdminUser | null;
   loading: boolean;
-  setSession: (token: string, user: AdminUser) => void;
+  setSession: (user: AdminUser) => void;
   updateUser: (user: AdminUser) => void;
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
@@ -48,8 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void bootstrap();
   }, [bootstrap]);
 
-  const setSession = useCallback((token: string, nextUser: AdminUser) => {
-    setToken(token);
+  const setSession = useCallback((nextUser: AdminUser) => {
     setUser(nextUser);
   }, []);
 
@@ -58,16 +57,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const refreshUser = useCallback(async () => {
-    const token = getToken();
-
-    if (!token) {
-      clearSession();
-      setUser(null);
-      return;
-    }
-
     try {
-      const response = await getMe(token);
+      const response = await getMe();
       const nextUser = parseAdminUser(response);
 
       if (!nextUser) {
@@ -87,14 +78,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const logout = useCallback(async () => {
-    const token = getToken();
-
-    if (token) {
-      try {
-        await logoutRequest(token);
-      } catch {
-        // Ignore logout API errors and clear local session anyway.
-      }
+    try {
+      await logoutRequest();
+    } catch {
+      // Ignore logout API errors and clear local session anyway.
     }
 
     clearSession();

@@ -22,8 +22,6 @@ export interface AdminUser {
 }
 
 export interface LoginResponse {
-  token_type: string;
-  access_token: string;
   user: AdminUser;
 }
 

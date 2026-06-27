@@ -32,30 +32,25 @@ export function isValidationError(
   );
 }
 
-type ApiFetchOptions = RequestInit & {
-  token?: string | null;
-};
-
 export async function apiFetch<T>(
   path: string,
-  init: ApiFetchOptions = {},
+  init: RequestInit = {},
 ): Promise<T> {
-  const { token, ...requestInit } = init;
   const url = resolveApiUrl(path);
 
   const isDynamic =
-    requestInit.cache === "no-store" ||
-    requestInit.method === "POST" ||
-    requestInit.method === "PUT" ||
-    requestInit.method === "PATCH" ||
-    requestInit.method === "DELETE";
+    init.cache === "no-store" ||
+    init.method === "POST" ||
+    init.method === "PUT" ||
+    init.method === "PATCH" ||
+    init.method === "DELETE";
 
   const response = await fetch(url, {
-    ...requestInit,
+    ...init,
+    credentials: "include",
     headers: {
       Accept: "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...requestInit.headers,
+      ...init.headers,
     },
     ...(isDynamic ? { cache: "no-store" as const } : { next: { revalidate: 0 } }),
   });

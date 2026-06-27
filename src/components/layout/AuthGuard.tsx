@@ -4,20 +4,18 @@ import { useEffect } from "react";
 import { useRouter } from "next/navigation";
 
 import { useAuth } from "@/contexts/AuthContext";
-import { getToken } from "@/lib/auth/token";
 
 export function AuthGuard({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const hasToken = Boolean(getToken());
 
   useEffect(() => {
-    if (!loading && !user && !hasToken) {
+    if (!loading && !user) {
       router.replace("/login");
     }
-  }, [loading, user, hasToken, router]);
+  }, [loading, user, router]);
 
-  if (loading || (hasToken && !user)) {
+  if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-[#F6F7F9]">
         <div className="rounded-[10px] bg-white px-6 py-4 text-sm text-gray-500 shadow-sm">

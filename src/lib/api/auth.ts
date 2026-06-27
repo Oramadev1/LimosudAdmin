@@ -15,6 +15,13 @@ export function parseAdminUser(payload: unknown): AdminUser | null {
     }
   }
 
+  if ("user" in payload) {
+    const user = (payload as LoginResponse).user;
+    if (user && typeof user === "object" && "email" in user) {
+      return user;
+    }
+  }
+
   if ("email" in payload && "id" in payload) {
     return payload as AdminUser;
   }
@@ -31,17 +38,13 @@ export function login(email: string, password: string) {
   });
 }
 
-export function getMe(token: string) {
-  return apiFetch<MeResponse>("/admin/auth/me", {
-    token,
-    cache: "no-store",
-  });
+export function getMe() {
+  return withAuth<MeResponse>("/admin/auth/me", { cache: "no-store" });
 }
 
-export function logout(token: string) {
-  return apiFetch<null>("/admin/auth/logout", {
+export function logout() {
+  return withAuth<null>("/admin/auth/logout", {
     method: "POST",
-    token,
     cache: "no-store",
   });
 }

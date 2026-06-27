@@ -1,54 +1,24 @@
-import { getToken } from "@/lib/auth/token";
-import { resolveApiUrl } from "@/lib/api/base-url";
 import { apiFetch, ApiError } from "@/lib/api/client";
+import { resolveApiUrl } from "@/lib/api/base-url";
 
-export function withAuth<T>(
-  path: string,
-  init: RequestInit & { token?: string | null } = {},
-) {
-  const token = init.token ?? getToken();
-
-  if (!token) {
-    throw new Error("Missing authentication token.");
-  }
-
-  return apiFetch<T>(path, { ...init, token });
+export function withAuth<T>(path: string, init: RequestInit = {}) {
+  return apiFetch<T>(path, init);
 }
 
-export function withAuthForm<T>(
-  path: string,
-  formData: FormData,
-  init: RequestInit & { token?: string | null } = {},
-) {
-  const token = init.token ?? getToken();
-
-  if (!token) {
-    throw new Error("Missing authentication token.");
-  }
-
+export function withAuthForm<T>(path: string, formData: FormData, init: RequestInit = {}) {
   return apiFetch<T>(path, {
     ...init,
     method: init.method ?? "POST",
-    token,
     body: formData,
   });
 }
 
-export async function withAuthBlob(
-  path: string,
-  init: RequestInit & { token?: string | null } = {},
-) {
-  const token = init.token ?? getToken();
-
-  if (!token) {
-    throw new Error("Missing authentication token.");
-  }
-
+export async function withAuthBlob(path: string, init: RequestInit = {}) {
   const response = await fetch(resolveApiUrl(path), {
     ...init,
+    credentials: "include",
     headers: {
       Accept: "application/json",
-      Authorization: `Bearer ${token}`,
       ...init.headers,
     },
     cache: "no-store",
