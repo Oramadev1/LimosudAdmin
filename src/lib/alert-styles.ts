@@ -2,6 +2,8 @@ export function getAlertTypeBadgeClass(slug: string): string {
   switch (slug) {
     case "reservation_follow_up":
       return "admin-badge admin-badge-confirmed";
+    case "website_contact":
+      return "admin-badge admin-badge-in-progress";
     case "maintenance_due":
       return "admin-badge admin-badge-partial";
     case "document_expiry":
@@ -36,4 +38,11 @@ export function getAlertReservationId(alert: {
   reservation?: { id: number } | null;
 }): number | null {
   return alert.reservation_id ?? alert.reservation?.id ?? null;
+}
+
+export function getAlertContactMessageId(alert: {
+  contact_message_id?: number | null;
+  contact_message?: { id: number } | null;
+}): number | null {
+  return alert.contact_message_id ?? alert.contact_message?.id ?? null;
 }

@@ -2,6 +2,7 @@ import { withAuth, withAuthBlob, withAuthForm } from "@/lib/api/authenticated";
 import type {
   AdminLookups,
   Alert,
+  ContactMessage,
   Contract,
   CreateAlertPayload,
   CreateCustomerPayload,
@@ -470,6 +471,24 @@ export function generateAlerts() {
 
 export function alertAction(id: number, action: "done" | "ignore") {
   return withAuth<{ data: Alert }>(`/admin/alerts/${id}/${action}`, { method: "PATCH" });
+}
+
+export function getContactMessages(page = 1) {
+  return withAuth<Paginated<ContactMessage>>(`/admin/contact-messages?page=${page}`);
+}
+
+export function getContactMessage(id: number) {
+  return withAuth<{ data: ContactMessage }>(`/admin/contact-messages/${id}`);
+}
+
+export function markContactMessageRead(id: number) {
+  return withAuth<{ data: ContactMessage }>(`/admin/contact-messages/${id}/read`, {
+    method: "PATCH",
+  });
+}
+
+export function deleteContactMessage(id: number) {
+  return withAuth<void>(`/admin/contact-messages/${id}`, { method: "DELETE" });
 }
 
 export function getUsers(page = 1) {
