@@ -24,8 +24,14 @@ export function CustomerEditClient({ id }: { id: number }) {
     nationality: "",
     phone: "",
     email: "",
+    address: "",
+    foreign_address: "",
     passport_or_cin: "",
+    passport_or_cin_issued_at: "",
     driving_license_number: "",
+    driving_license_issued_at: "",
+    driving_license_expires_at: "",
+    driving_license_country: "",
   });
 
   const { data, isPending, error } = useAdminQuery({
@@ -44,8 +50,14 @@ export function CustomerEditClient({ id }: { id: number }) {
       nationality: customer.nationality,
       phone: customer.phone,
       email: customer.email ?? "",
+      address: customer.address ?? "",
+      foreign_address: customer.foreign_address ?? "",
       passport_or_cin: customer.passport_or_cin ?? "",
+      passport_or_cin_issued_at: customer.passport_or_cin_issued_at?.slice(0, 10) ?? "",
       driving_license_number: customer.driving_license_number ?? "",
+      driving_license_issued_at: customer.driving_license_issued_at?.slice(0, 10) ?? "",
+      driving_license_expires_at: customer.driving_license_expires_at?.slice(0, 10) ?? "",
+      driving_license_country: customer.driving_license_country ?? "",
     });
   }, [data]);
 
@@ -69,8 +81,14 @@ export function CustomerEditClient({ id }: { id: number }) {
         nationality: form.nationality,
         phone: form.phone,
         email: form.email || null,
+        address: form.address || null,
+        foreign_address: form.foreign_address || null,
         passport_or_cin: form.passport_or_cin || null,
+        passport_or_cin_issued_at: form.passport_or_cin_issued_at || null,
         driving_license_number: form.driving_license_number || null,
+        driving_license_issued_at: form.driving_license_issued_at || null,
+        driving_license_expires_at: form.driving_license_expires_at || null,
+        driving_license_country: form.driving_license_country || null,
       });
     } catch (err) {
       const body = err instanceof ApiError ? err.body : err;
@@ -153,6 +171,59 @@ export function CustomerEditClient({ id }: { id: number }) {
               value={form.driving_license_number}
               onChange={(event) =>
                 setForm((current) => ({ ...current, driving_license_number: event.target.value }))
+              }
+              className="admin-input"
+            />
+          </AdminFormField>
+          <AdminFormField label="Address">
+            <input
+              value={form.address}
+              onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
+              className="admin-input"
+            />
+          </AdminFormField>
+          <AdminFormField label="Foreign address">
+            <input
+              value={form.foreign_address}
+              onChange={(event) => setForm((current) => ({ ...current, foreign_address: event.target.value }))}
+              className="admin-input"
+            />
+          </AdminFormField>
+          <AdminFormField label="License issued at">
+            <input
+              type="date"
+              value={form.driving_license_issued_at}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, driving_license_issued_at: event.target.value }))
+              }
+              className="admin-input"
+            />
+          </AdminFormField>
+          <AdminFormField label="License expires at">
+            <input
+              type="date"
+              value={form.driving_license_expires_at}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, driving_license_expires_at: event.target.value }))
+              }
+              className="admin-input"
+            />
+          </AdminFormField>
+          <AdminFormField label="License country">
+            <input
+              value={form.driving_license_country}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, driving_license_country: event.target.value }))
+              }
+              className="admin-input"
+            />
+          </AdminFormField>
+          <AdminFormField label="Passport/CIN issued at">
+            <input
+              type="date"
+              value={form.passport_or_cin_issued_at}
+              onChange={(event) =>
+                setForm((current) => ({ ...current, passport_or_cin_issued_at: event.target.value }))
               }
               className="admin-input"
             />

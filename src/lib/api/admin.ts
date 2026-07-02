@@ -4,6 +4,8 @@ import type {
   Alert,
   ContactMessage,
   Contract,
+  ContractFormData,
+  GenerateContractPayload,
   CreateAlertPayload,
   CreateCustomerPayload,
   CreateExpensePayload,
@@ -345,13 +347,18 @@ export function getPaymentSummary(reservationId: number) {
   return withAuth<PaymentSummary>(`/admin/reservations/${reservationId}/payment-summary`);
 }
 
+export function getContractForm(reservationId: number) {
+  return withAuth<{ data: ContractFormData }>(`/admin/reservations/${reservationId}/contract/form`);
+}
+
 export function getContractByReservation(reservationId: number) {
   return withAuth<{ data: Contract }>(`/admin/reservations/${reservationId}/contract`);
 }
 
-export function generateContract(reservationId: number) {
+export function generateContract(reservationId: number, payload?: GenerateContractPayload) {
   return withAuth<{ data: Contract }>(`/admin/reservations/${reservationId}/contract/generate`, {
     method: "POST",
+    body: JSON.stringify(payload ?? {}),
   });
 }
 

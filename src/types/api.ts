@@ -216,8 +216,14 @@ export interface Customer {
   nationality: string;
   phone: string;
   email: string | null;
+  address?: string | null;
+  foreign_address?: string | null;
   passport_or_cin: string | null;
+  passport_or_cin_issued_at?: string | null;
   driving_license_number: string | null;
+  driving_license_issued_at?: string | null;
+  driving_license_expires_at?: string | null;
+  driving_license_country?: string | null;
   reservations_count?: number;
   created_at: string;
   updated_at: string;
@@ -266,8 +272,14 @@ export interface CreateCustomerPayload {
   nationality: string;
   phone: string;
   email?: string | null;
+  address?: string | null;
+  foreign_address?: string | null;
   passport_or_cin?: string | null;
+  passport_or_cin_issued_at?: string | null;
   driving_license_number?: string | null;
+  driving_license_issued_at?: string | null;
+  driving_license_expires_at?: string | null;
+  driving_license_country?: string | null;
 }
 
 export interface Reservation {
@@ -512,6 +524,7 @@ export interface Contract {
   id: number;
   reservation_id: number;
   contract_number: string;
+  contract_series: string;
   status: LookupRef;
   has_pdf: boolean;
   has_signed_pdf: boolean;
@@ -519,6 +532,128 @@ export interface Contract {
   signed_at: string | null;
   created_at: string;
   updated_at: string;
+}
+
+export type ContractInsuranceType = "basic" | "premium" | "full_coverage";
+
+export interface ContractDetailsPayload {
+  customer: {
+    address: string | null;
+    foreign_address: string | null;
+    license_issued_at: string | null;
+    license_expires_at: string | null;
+    license_country: string | null;
+    passport_or_cin_issued_at: string | null;
+  };
+  vehicle: {
+    vin: string | null;
+    color: string | null;
+    fuel_level: string | null;
+    mileage: number | null;
+  };
+  additional_driver: {
+    enabled: boolean;
+    full_name: string;
+    address: string;
+    passport_or_cin: string;
+    driving_license_number: string;
+    license_issued_at: string;
+    license_expires_at: string;
+    nationality: string;
+    phone: string;
+  };
+  equipment: Record<string, boolean>;
+  documents: Record<string, boolean>;
+  condition: {
+    before: Record<string, string>;
+    after: Record<string, string>;
+  };
+  rental: {
+    actual_return_date: string;
+    actual_return_time: string;
+    extension: string;
+    extension_total: string;
+  };
+  payment: {
+    discount: number;
+    additional_fees: number;
+    late_return_fees: number;
+    fuel_charges: number;
+    cleaning_charges: number;
+    damage_charges: number;
+    tax: number;
+    scheduled_payment_date: string;
+  };
+  insurance: {
+    type: ContractInsuranceType;
+    deductible: number;
+  };
+  special_authorization: {
+    leave_urban_area: boolean;
+  };
+  persist_customer: boolean;
+  persist_vehicle: boolean;
+}
+
+export interface ContractFormData {
+  reservation_id: number;
+  reservation_number: string;
+  reservation_status: string;
+  can_generate: boolean;
+  existing_contract: {
+    id: number;
+    contract_number: string;
+    contract_series: string;
+    status: LookupRef;
+  } | null;
+  auto: {
+    contract_series: string;
+    generation_date: string;
+    customer: {
+      full_name: string;
+      nationality: string;
+      phone: string;
+      email: string | null;
+      passport_or_cin: string | null;
+      driving_license_number: string | null;
+    };
+    vehicle: {
+      brand: string | null;
+      model: string | null;
+      name: string;
+      category: string | null;
+      plate_number: string;
+      year: number | null;
+      transmission: string | null;
+      fuel_type: string | null;
+      daily_price: number;
+      weekly_price: number;
+      monthly_price: number;
+    };
+    rental: {
+      pickup_location: string | null;
+      dropoff_location: string | null;
+      pickup_datetime: string;
+      dropoff_datetime: string;
+      total_days: number;
+    };
+    payment: {
+      deposit_amount: number;
+      delivery_fee: number;
+      total_price: number;
+      amount_paid: number;
+      remaining_balance: number;
+      payment_status: string | null;
+      payment_method: string | null;
+    };
+  };
+  details: ContractDetailsPayload;
+  missing_fields: string[];
+}
+
+export interface GenerateContractPayload {
+  contract_series?: string;
+  details?: Partial<ContractDetailsPayload>;
 }
 
 export interface DashboardRevenueReport {

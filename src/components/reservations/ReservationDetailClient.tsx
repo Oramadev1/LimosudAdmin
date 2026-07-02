@@ -10,7 +10,6 @@ import {
   createPayment,
   deleteReservation,
   downloadContract,
-  generateContract,
   getContractByReservation,
   getPaymentSummary,
   getReservation,
@@ -39,6 +38,7 @@ import { useAdminQuery, useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import { useSubmitLock } from "@/lib/use-submit-lock";
 import { AdminFormField, DetailRow, ErrorMessage, SectionCard } from "@/components/ui/AdminUi";
+import { ContractGenerateModal } from "@/components/reservations/ContractGenerateModal";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -49,6 +49,7 @@ export function ReservationDetailClient({ id }: { id: number }) {
   const { data: lookups } = useLookupsQuery();
   const [error, setError] = useState<string | null>(null);
   const [contractMessage, setContractMessage] = useState<string | null>(null);
+  const [showContractModal, setShowContractModal] = useState(false);
   const [contractAction, setContractAction] = useState<
     null | "generate" | "load" | "download" | "sign" | "cancel"
   >(null);
@@ -137,21 +138,15 @@ export function ReservationDetailClient({ id }: { id: number }) {
     }
   };
 
-  const handleGenerateContract = async () => {
-    await runOnce(async () => {
-      setError(null);
-      setContractMessage(null);
-      setContractAction("generate");
-      try {
-        await generateContract(id);
-        await refetchContract();
-        setContractMessage("Contract generated successfully.");
-      } catch (err) {
-        setError(err instanceof ApiError ? err.message : "Contract generation failed.");
-      } finally {
-        setContractAction(null);
-      }
-    });
+  const handleGenerateContract = () => {
+    setError(null);
+    setContractMessage(null);
+    setShowContractModal(true);
+  };
+
+  const handleContractGenerated = async () => {
+    await refetchContract();
+    setContractMessage("Contract generated successfully.");
   };
 
   const handleLoadContract = async () => {
@@ -509,7 +504,7 @@ export function ReservationDetailClient({ id }: { id: number }) {
               disabled={contractAction !== null}
               className="admin-btn-primary"
             >
-              {contractAction === "generate" ? "Generating..." : "Generate contract"}
+              Generate contract
             </button>
           ) : null}
           {canViewContracts ? (
@@ -563,6 +558,13 @@ export function ReservationDetailClient({ id }: { id: number }) {
         </div>
       </SectionCard>
       ) : null}
+
+      <ContractGenerateModal
+        reservationId={id}
+        open={showContractModal}
+        onClose={() => setShowContractModal(false)}
+        onGenerated={() => void handleContractGenerated()}
+      />
     </div>
   );
 }
