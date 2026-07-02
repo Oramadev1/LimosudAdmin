@@ -77,8 +77,6 @@ const DOCUMENT_FIELDS: Array<{ key: keyof ContractDetailsPayload["documents"]; l
   { key: "other_documents", label: "Other documents" },
 ];
 
-const CONDITION_ZONES = ["front", "rear", "left", "right", "roof", "windshield"] as const;
-
 function Section({ title, children }: { title: string; children: React.ReactNode }) {
   return (
     <section className="rounded-[10px] border border-gray-200 bg-gray-50/60 p-4">
@@ -445,48 +443,6 @@ export function ContractGenerateModal({
                       />
                       {item.label}
                     </label>
-                  ))}
-                </div>
-              </Section>
-
-              <Section title="Vehicle condition notes">
-                <div className="grid gap-4 lg:grid-cols-2">
-                  {(["before", "after"] as const).map((phase) => (
-                    <div key={phase} className="space-y-3">
-                      <p className="text-sm font-semibold capitalize text-gray-800">{phase} rental</p>
-                      {CONDITION_ZONES.map((zone) => (
-                        <AdminFormField key={`${phase}-${zone}`} label={zone}>
-                          <input
-                            className="admin-input"
-                            value={details.condition[phase][zone] ?? ""}
-                            onChange={(e) =>
-                              updateDetails((c) => ({
-                                ...c,
-                                condition: {
-                                  ...c.condition,
-                                  [phase]: { ...c.condition[phase], [zone]: e.target.value },
-                                },
-                              }))
-                            }
-                          />
-                        </AdminFormField>
-                      ))}
-                      <AdminFormField label="Notes">
-                        <textarea
-                          className="admin-input min-h-[72px]"
-                          value={details.condition[phase].notes ?? ""}
-                          onChange={(e) =>
-                            updateDetails((c) => ({
-                              ...c,
-                              condition: {
-                                ...c.condition,
-                                [phase]: { ...c.condition[phase], notes: e.target.value },
-                              },
-                            }))
-                          }
-                        />
-                      </AdminFormField>
-                    </div>
                   ))}
                 </div>
               </Section>
