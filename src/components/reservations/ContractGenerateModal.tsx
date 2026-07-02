@@ -5,6 +5,7 @@ import { useEffect, useState } from "react";
 
 import { getContractForm, generateContract } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
+import { CONTRACT_PAYMENT_METHODS } from "@/lib/contract-payment-methods";
 import type { ContractDetailsPayload, ContractFormData } from "@/types/api";
 import { AdminFormField, ErrorMessage } from "@/components/ui/AdminUi";
 
@@ -493,6 +494,26 @@ export function ContractGenerateModal({
                       }
                     />
                   </AdminFormField>
+                  <AdminFormField label="Payment method" className="md:col-span-3">
+                    <div className="flex flex-wrap gap-4">
+                      {CONTRACT_PAYMENT_METHODS.map((method) => (
+                        <label key={method.slug} className="flex items-center gap-2 text-sm text-gray-700">
+                          <input
+                            type="radio"
+                            name="contract_payment_method"
+                            checked={details.payment.payment_method_slug === method.slug}
+                            onChange={() =>
+                              updateDetails((c) => ({
+                                ...c,
+                                payment: { ...c.payment, payment_method_slug: method.slug },
+                              }))
+                            }
+                          />
+                          {method.label}
+                        </label>
+                      ))}
+                    </div>
+                  </AdminFormField>
                   <AdminFormField label="Insurance type">
                     <select
                       className="admin-input"
@@ -509,7 +530,6 @@ export function ContractGenerateModal({
                     >
                       <option value="basic">Basic</option>
                       <option value="premium">Premium</option>
-                      <option value="full_coverage">Full coverage</option>
                     </select>
                   </AdminFormField>
                   <AdminFormField label="Deductible (MAD)">

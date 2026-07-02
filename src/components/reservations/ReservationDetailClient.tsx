@@ -17,6 +17,7 @@ import {
   reservationAction,
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
+import { CONTRACT_PAYMENT_METHODS } from "@/lib/contract-payment-methods";
 import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import {
@@ -449,9 +450,15 @@ export function ReservationDetailClient({ id }: { id: number }) {
                 }}
                 className={`admin-input ${inputErrorClass(paymentFieldErrors.payment_method_slug)}`}
               >
-                {lookups?.payment_methods.map((item) => (
-                  <option key={item.slug} value={item.slug}>{item.name}</option>
-                ))}
+                {CONTRACT_PAYMENT_METHODS.map((method) => {
+                  const lookup = lookups?.payment_methods.find((item) => item.slug === method.slug);
+
+                  return (
+                    <option key={method.slug} value={method.slug}>
+                      {lookup?.name ?? method.label}
+                    </option>
+                  );
+                })}
               </select>
             </AdminFormField>
             <AdminFormField label="Type" error={paymentFieldErrors.payment_type_slug}>

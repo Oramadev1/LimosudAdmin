@@ -11,6 +11,7 @@ import {
   getReservations,
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
+import { CONTRACT_PAYMENT_METHODS } from "@/lib/contract-payment-methods";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
 import { canRecordPayment } from "@/lib/reservation-workflow";
@@ -249,9 +250,15 @@ export default function PaymentsPage() {
                 }}
                 className={`admin-input ${inputErrorClass(fieldErrors.payment_method_slug)}`}
               >
-                {lookups?.payment_methods.map((item) => (
-                  <option key={item.slug} value={item.slug}>{item.name}</option>
-                ))}
+                {CONTRACT_PAYMENT_METHODS.map((method) => {
+                  const lookup = lookups?.payment_methods.find((item) => item.slug === method.slug);
+
+                  return (
+                    <option key={method.slug} value={method.slug}>
+                      {lookup?.name ?? method.label}
+                    </option>
+                  );
+                })}
               </select>
             </AdminFormField>
             <AdminFormField error={fieldErrors.payment_type_slug}>

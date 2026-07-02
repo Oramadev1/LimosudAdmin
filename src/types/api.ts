@@ -530,7 +530,7 @@ export interface Contract {
   updated_at: string;
 }
 
-export type ContractInsuranceType = "basic" | "premium" | "full_coverage";
+export type ContractInsuranceType = "basic" | "premium";
 
 export interface ContractDetailsPayload {
   customer: {
@@ -581,6 +581,7 @@ export interface ContractDetailsPayload {
     damage_charges: number;
     tax: number;
     scheduled_payment_date: string;
+    payment_method_slug: "cash" | "bank_transfer" | "credit_card";
   };
   insurance: {
     type: ContractInsuranceType;
