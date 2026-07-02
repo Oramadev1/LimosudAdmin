@@ -14,6 +14,7 @@ import {
 } from "@/lib/api/admin";
 import { ApiError, isValidationError } from "@/lib/api/client";
 import { formatCurrency, formatDateTime } from "@/lib/format";
+import { mapValidationErrors, summarizeValidationErrors } from "@/lib/validation";
 import { useAdminQuery, useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Maintenance } from "@/types/api";
@@ -37,6 +38,17 @@ const emptyForm = {
   notes: "",
 };
 
+const FIELD_LABELS: Record<string, string> = {
+  vehicle_id: "Vehicle",
+  maintenance_type_slug: "Maintenance type",
+  maintenance_date: "Maintenance date",
+  next_maintenance_date: "Next maintenance date",
+  mileage: "Mileage",
+  cost: "Cost",
+  garage_name: "Garage name",
+  notes: "Notes",
+};
+
 export default function MaintenancesPage() {
   const queryClient = useQueryClient();
   const formRef = useRef<HTMLDivElement>(null);
@@ -45,6 +57,7 @@ export default function MaintenancesPage() {
   const [view, setView] = useState<"all" | "upcoming">("all");
   const [showForm, setShowForm] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
 
@@ -83,12 +96,14 @@ export default function MaintenancesPage() {
     setForm(emptyForm);
     setShowForm(false);
     setSubmitError(null);
+    setFieldErrors({});
   };
 
   const openCreateForm = () => {
     setEditingId(null);
     setForm(emptyForm);
     setSubmitError(null);
+    setFieldErrors({});
     setShowForm(true);
     scrollToAdminForm(formRef);
   };
@@ -106,6 +121,7 @@ export default function MaintenancesPage() {
       notes: item.notes ?? "",
     });
     setSubmitError(null);
+    setFieldErrors({});
     setShowForm(true);
     scrollToAdminForm(formRef);
   };
@@ -113,6 +129,28 @@ export default function MaintenancesPage() {
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
     setSubmitError(null);
+    setFieldErrors({});
+
+    const localErrors: Record<string, string> = {};
+
+    if (!form.vehicle_id) {
+      localErrors.vehicle_id = "Please select a vehicle.";
+    }
+
+    if (!form.maintenance_type_slug) {
+      localErrors.maintenance_type_slug = "Please select a maintenance type.";
+    }
+
+    if (!form.maintenance_date) {
+      localErrors.maintenance_date = "Please enter the maintenance date.";
+    }
+
+    if (Object.keys(localErrors).length > 0) {
+      setFieldErrors(localErrors);
+      setSubmitError("Please fill in the required fields highlighted below.");
+      return;
+    }
+
     try {
       await saveMutation.mutateAsync({
         vehicle_id: Number(form.vehicle_id),
@@ -127,9 +165,14 @@ export default function MaintenancesPage() {
       });
     } catch (err) {
       const body = err instanceof ApiError ? err.body : err;
-      setSubmitError(
-        isValidationError(body) ? body.message : err instanceof ApiError ? err.message : "Save failed.",
-      );
+
+      if (isValidationError(body)) {
+        setFieldErrors(mapValidationErrors(body.errors));
+        setSubmitError(summarizeValidationErrors(body, FIELD_LABELS));
+        return;
+      }
+
+      setSubmitError(err instanceof ApiError ? err.message : "Save failed.");
     }
   };
 
@@ -235,32 +278,120 @@ export default function MaintenancesPage() {
       >
         <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
           {submitError ? <div className="md:col-span-2"><ErrorMessage message={submitError} /></div> : null}
-          <select
-            value={form.vehicle_id}
-            onChange={(e) => setForm((c) => ({ ...c, vehicle_id: e.target.value }))}
-            className="admin-input"
-            required
-          >
-            <option value="">Select vehicle</option>
-            {vehicles?.data.map((v) => (
-              <option key={v.id} value={v.id}>{v.name} ({v.plate_number})</option>
-            ))}
-          </select>
-          <select
-            value={form.maintenance_type_slug}
-            onChange={(e) => setForm((c) => ({ ...c, maintenance_type_slug: e.target.value }))}
-            className="admin-input"
-          >
-            {lookups?.maintenance_types.map((item) => (
-              <option key={item.slug} value={item.slug}>{item.name}</option>
-            ))}
-          </select>
-          <input type="date" value={form.maintenance_date} onChange={(e) => setForm((c) => ({ ...c, maintenance_date: e.target.value }))} className="admin-input" required />
-          <input type="date" value={form.next_maintenance_date} onChange={(e) => setForm((c) => ({ ...c, next_maintenance_date: e.target.value }))} className="admin-input" />
-          <input placeholder="Mileage" value={form.mileage} onChange={(e) => setForm((c) => ({ ...c, mileage: e.target.value }))} className="admin-input" />
-          <input placeholder="Cost" value={form.cost} onChange={(e) => setForm((c) => ({ ...c, cost: e.target.value }))} className="admin-input" />
-          <input placeholder="Garage name" value={form.garage_name} onChange={(e) => setForm((c) => ({ ...c, garage_name: e.target.value }))} className="admin-input md:col-span-2" />
-          <textarea placeholder="Notes" value={form.notes} onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))} className="admin-input min-h-20 md:col-span-2" />
+          <div>
+            <select
+              value={form.vehicle_id}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, vehicle_id: e.target.value }));
+                setFieldErrors((current) => {
+                  const next = { ...current };
+                  delete next.vehicle_id;
+                  return next;
+                });
+              }}
+              className={`admin-input ${fieldErrors.vehicle_id ? "border-red-400" : ""}`}
+              required
+            >
+              <option value="">Select vehicle</option>
+              {vehicles?.data.map((v) => (
+                <option key={v.id} value={v.id}>{v.name} ({v.plate_number})</option>
+              ))}
+            </select>
+            {fieldErrors.vehicle_id ? (
+              <p className="mt-1 text-xs text-red-600">{fieldErrors.vehicle_id}</p>
+            ) : null}
+          </div>
+          <div>
+            <select
+              value={form.maintenance_type_slug}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, maintenance_type_slug: e.target.value }));
+                setFieldErrors((current) => {
+                  const next = { ...current };
+                  delete next.maintenance_type_slug;
+                  return next;
+                });
+              }}
+              className={`admin-input ${fieldErrors.maintenance_type_slug ? "border-red-400" : ""}`}
+              required
+            >
+              <option value="">Select type</option>
+              {lookups?.maintenance_types.map((item) => (
+                <option key={item.slug} value={item.slug}>{item.name}</option>
+              ))}
+            </select>
+            {fieldErrors.maintenance_type_slug ? (
+              <p className="mt-1 text-xs text-red-600">{fieldErrors.maintenance_type_slug}</p>
+            ) : null}
+          </div>
+          <div>
+            <input
+              type="date"
+              value={form.maintenance_date}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, maintenance_date: e.target.value }));
+                setFieldErrors((current) => {
+                  const next = { ...current };
+                  delete next.maintenance_date;
+                  return next;
+                });
+              }}
+              className={`admin-input ${fieldErrors.maintenance_date ? "border-red-400" : ""}`}
+              required
+            />
+            {fieldErrors.maintenance_date ? (
+              <p className="mt-1 text-xs text-red-600">{fieldErrors.maintenance_date}</p>
+            ) : null}
+          </div>
+          <div>
+            <input
+              type="date"
+              value={form.next_maintenance_date}
+              onChange={(e) => setForm((c) => ({ ...c, next_maintenance_date: e.target.value }))}
+              className={`admin-input ${fieldErrors.next_maintenance_date ? "border-red-400" : ""}`}
+            />
+            {fieldErrors.next_maintenance_date ? (
+              <p className="mt-1 text-xs text-red-600">{fieldErrors.next_maintenance_date}</p>
+            ) : null}
+          </div>
+          <div>
+            <input
+              placeholder="Mileage"
+              value={form.mileage}
+              onChange={(e) => setForm((c) => ({ ...c, mileage: e.target.value }))}
+              className={`admin-input ${fieldErrors.mileage ? "border-red-400" : ""}`}
+            />
+            {fieldErrors.mileage ? <p className="mt-1 text-xs text-red-600">{fieldErrors.mileage}</p> : null}
+          </div>
+          <div>
+            <input
+              placeholder="Cost"
+              value={form.cost}
+              onChange={(e) => setForm((c) => ({ ...c, cost: e.target.value }))}
+              className={`admin-input ${fieldErrors.cost ? "border-red-400" : ""}`}
+            />
+            {fieldErrors.cost ? <p className="mt-1 text-xs text-red-600">{fieldErrors.cost}</p> : null}
+          </div>
+          <div className="md:col-span-2">
+            <input
+              placeholder="Garage name"
+              value={form.garage_name}
+              onChange={(e) => setForm((c) => ({ ...c, garage_name: e.target.value }))}
+              className={`admin-input ${fieldErrors.garage_name ? "border-red-400" : ""}`}
+            />
+            {fieldErrors.garage_name ? (
+              <p className="mt-1 text-xs text-red-600">{fieldErrors.garage_name}</p>
+            ) : null}
+          </div>
+          <div className="md:col-span-2">
+            <textarea
+              placeholder="Notes"
+              value={form.notes}
+              onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))}
+              className={`admin-input min-h-20 ${fieldErrors.notes ? "border-red-400" : ""}`}
+            />
+            {fieldErrors.notes ? <p className="mt-1 text-xs text-red-600">{fieldErrors.notes}</p> : null}
+          </div>
           <div className="md:col-span-2 flex gap-3">
             <button type="submit" disabled={saveMutation.isPending} className="admin-btn-primary">
               {saveMutation.isPending ? "Saving..." : editingId ? "Update" : "Create"}
