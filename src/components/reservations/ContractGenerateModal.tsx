@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { getContractForm, generateContract } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { CONTRACT_PAYMENT_METHODS } from "@/lib/contract-payment-methods";
+import { formatCurrency, formatDateTime } from "@/lib/format";
 import type { ContractDetailsPayload, ContractFormData } from "@/types/api";
 import { AdminFormField, ErrorMessage } from "@/components/ui/AdminUi";
 
@@ -84,6 +85,14 @@ function Section({ title, children }: { title: string; children: React.ReactNode
       <h3 className="mb-3 text-sm font-bold text-gray-900">{title}</h3>
       {children}
     </section>
+  );
+}
+
+function ReadOnlyField({ label, value }: { label: string; value: string }) {
+  return (
+    <AdminFormField label={label}>
+      <input className="admin-input bg-gray-50" readOnly value={value} />
+    </AdminFormField>
   );
 }
 
@@ -213,10 +222,113 @@ export function ContractGenerateModal({
                 </div>
               </Section>
 
+              <Section title="Rental & dates">
+                <p className="mb-3 text-xs text-gray-500">
+                  From the reservation — these values appear on the contract (Départ, Retour, locations).
+                </p>
+                <div className="grid gap-4 md:grid-cols-2">
+                  <ReadOnlyField
+                    label="Pickup location (Lieu de livraison)"
+                    value={form.auto.rental.pickup_location ?? "—"}
+                  />
+                  <ReadOnlyField
+                    label="Dropoff location"
+                    value={form.auto.rental.dropoff_location ?? "—"}
+                  />
+                  <ReadOnlyField
+                    label="Départ"
+                    value={
+                      form.auto.rental.pickup_datetime
+                        ? formatDateTime(form.auto.rental.pickup_datetime)
+                        : "—"
+                    }
+                  />
+                  <ReadOnlyField
+                    label="Retour"
+                    value={
+                      form.auto.rental.dropoff_datetime
+                        ? formatDateTime(form.auto.rental.dropoff_datetime)
+                        : "—"
+                    }
+                  />
+                  <ReadOnlyField
+                    label="Lieu et date de reprise"
+                    value={
+                      form.auto.rental.dropoff_location && form.auto.rental.dropoff_datetime
+                        ? `${form.auto.rental.dropoff_location} — ${formatDateTime(form.auto.rental.dropoff_datetime)}`
+                        : "—"
+                    }
+                  />
+                  <ReadOnlyField
+                    label="Duration"
+                    value={`${form.auto.rental.total_days} day(s)`}
+                  />
+                </div>
+                <div className="mt-4 grid gap-4 md:grid-cols-2">
+                  <AdminFormField label="Extension (Prolongation)">
+                    <input
+                      className="admin-input"
+                      value={details.rental.extension}
+                      onChange={(e) =>
+                        updateDetails((c) => ({
+                          ...c,
+                          rental: { ...c.rental, extension: e.target.value },
+                        }))
+                      }
+                    />
+                  </AdminFormField>
+                  <AdminFormField label="Total after extension">
+                    <input
+                      className="admin-input"
+                      value={details.rental.extension_total}
+                      onChange={(e) =>
+                        updateDetails((c) => ({
+                          ...c,
+                          rental: { ...c.rental, extension_total: e.target.value },
+                        }))
+                      }
+                    />
+                  </AdminFormField>
+                </div>
+              </Section>
+
+              <Section title="Pricing summary">
+                <p className="mb-3 text-xs text-gray-500">
+                  From the reservation and payments — shown on the contract PDF.
+                </p>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <ReadOnlyField
+                    label="Price per day"
+                    value={formatCurrency(form.auto.vehicle.daily_price)}
+                  />
+                  <ReadOnlyField
+                    label="Total price"
+                    value={formatCurrency(form.auto.payment.total_price)}
+                  />
+                  <ReadOnlyField label="Deposit (Caution)" value={formatCurrency(form.auto.payment.deposit_amount)} />
+                  <ReadOnlyField label="Delivery fee" value={formatCurrency(form.auto.payment.delivery_fee)} />
+                  <ReadOnlyField label="Advance paid (Avance)" value={formatCurrency(form.auto.payment.amount_paid)} />
+                  <ReadOnlyField
+                    label="Remaining (Reste)"
+                    value={formatCurrency(form.auto.payment.remaining_balance)}
+                  />
+                  <ReadOnlyField
+                    label="Payment status"
+                    value={form.auto.payment.payment_status ?? "—"}
+                  />
+                  <ReadOnlyField
+                    label="Scheduled payment date"
+                    value={details.payment.scheduled_payment_date || "—"}
+                  />
+                </div>
+              </Section>
+
               <Section title="Customer details">
-                <div className="mb-4 grid gap-3 md:grid-cols-2">
-                  <input className="admin-input bg-gray-50" readOnly value={form.auto.customer.full_name} />
-                  <input className="admin-input bg-gray-50" readOnly value={form.auto.customer.phone} />
+                <div className="mb-4 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+                  <ReadOnlyField label="Full name" value={form.auto.customer.full_name} />
+                  <ReadOnlyField label="Nationality" value={form.auto.customer.nationality} />
+                  <ReadOnlyField label="Phone" value={form.auto.customer.phone} />
+                  <ReadOnlyField label="Email" value={form.auto.customer.email ?? "—"} />
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <AdminFormField label="Passport / CIN">
@@ -331,10 +443,19 @@ export function ContractGenerateModal({
               </Section>
 
               <Section title="Vehicle details">
-                <div className="mb-4 grid gap-3 md:grid-cols-3">
-                  <input className="admin-input bg-gray-50" readOnly value={`${form.auto.vehicle.brand ?? ""} ${form.auto.vehicle.model ?? form.auto.vehicle.name}`} />
-                  <input className="admin-input bg-gray-50" readOnly value={form.auto.vehicle.plate_number} />
-                  <input className="admin-input bg-gray-50" readOnly value={form.auto.vehicle.category ?? ""} />
+                <div className="mb-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <ReadOnlyField
+                    label="Vehicle"
+                    value={`${form.auto.vehicle.brand ?? ""} ${form.auto.vehicle.model ?? form.auto.vehicle.name}`.trim()}
+                  />
+                  <ReadOnlyField label="Plate number" value={form.auto.vehicle.plate_number} />
+                  <ReadOnlyField label="Category" value={form.auto.vehicle.category ?? "—"} />
+                  <ReadOnlyField
+                    label="Year"
+                    value={form.auto.vehicle.year ? String(form.auto.vehicle.year) : "—"}
+                  />
+                  <ReadOnlyField label="Transmission" value={form.auto.vehicle.transmission ?? "—"} />
+                  <ReadOnlyField label="Fuel type" value={form.auto.vehicle.fuel_type ?? "—"} />
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <AdminFormField label="VIN">
@@ -449,53 +570,9 @@ export function ContractGenerateModal({
               </Section>
 
               <Section title="Payment & insurance">
-                <div className="mb-4 grid gap-3 md:grid-cols-4">
-                  <input className="admin-input bg-gray-50" readOnly value={`Total: ${form.auto.payment.total_price} MAD`} />
-                  <input className="admin-input bg-gray-50" readOnly value={`Paid: ${form.auto.payment.amount_paid} MAD`} />
-                  <input className="admin-input bg-gray-50" readOnly value={`Remaining: ${form.auto.payment.remaining_balance} MAD`} />
-                  <input className="admin-input bg-gray-50" readOnly value={`Deposit: ${form.auto.payment.deposit_amount} MAD`} />
-                </div>
-                <div className="grid gap-4 md:grid-cols-3">
-                  {([
-                    ["discount", "Discount"],
-                    ["additional_fees", "Additional fees"],
-                    ["late_return_fees", "Late return fees"],
-                    ["fuel_charges", "Fuel charges"],
-                    ["cleaning_charges", "Cleaning charges"],
-                    ["damage_charges", "Damage charges"],
-                    ["tax", "Tax"],
-                  ] as const).map(([key, label]) => (
-                    <AdminFormField key={key} label={label}>
-                      <input
-                        type="number"
-                        min="0"
-                        step="0.01"
-                        className="admin-input"
-                        value={details.payment[key]}
-                        onChange={(e) =>
-                          updateDetails((c) => ({
-                            ...c,
-                            payment: { ...c.payment, [key]: Number(e.target.value) || 0 },
-                          }))
-                        }
-                      />
-                    </AdminFormField>
-                  ))}
-                  <AdminFormField label="Scheduled payment date">
-                    <input
-                      type="date"
-                      className="admin-input"
-                      value={details.payment.scheduled_payment_date}
-                      onChange={(e) =>
-                        updateDetails((c) => ({
-                          ...c,
-                          payment: { ...c.payment, scheduled_payment_date: e.target.value },
-                        }))
-                      }
-                    />
-                  </AdminFormField>
-                  <AdminFormField label="Payment method" className="md:col-span-3">
-                    <div className="flex flex-wrap gap-4">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <AdminFormField label="Payment method">
+                    <div className="flex flex-wrap gap-4 pt-1">
                       {CONTRACT_PAYMENT_METHODS.map((method) => (
                         <label key={method.slug} className="flex items-center gap-2 text-sm text-gray-700">
                           <input
@@ -531,20 +608,6 @@ export function ContractGenerateModal({
                       <option value="basic">Basic</option>
                       <option value="premium">Premium</option>
                     </select>
-                  </AdminFormField>
-                  <AdminFormField label="Deductible (MAD)">
-                    <input
-                      type="number"
-                      min="0"
-                      className="admin-input"
-                      value={details.insurance.deductible}
-                      onChange={(e) =>
-                        updateDetails((c) => ({
-                          ...c,
-                          insurance: { ...c.insurance, deductible: Number(e.target.value) || 0 },
-                        }))
-                      }
-                    />
                   </AdminFormField>
                 </div>
               </Section>
