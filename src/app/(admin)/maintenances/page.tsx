@@ -116,7 +116,7 @@ export default function MaintenancesPage() {
       maintenance_date: item.maintenance_date.slice(0, 10),
       next_maintenance_date: item.next_maintenance_date?.slice(0, 10) ?? "",
       mileage: item.mileage ? String(item.mileage) : "",
-      cost: item.cost ?? "",
+      cost: item.cost && Number(item.cost) > 0 ? String(item.cost) : "",
       garage_name: item.garage_name ?? "",
       notes: item.notes ?? "",
     });
