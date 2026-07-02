@@ -12,16 +12,19 @@ import {
   getVehicles,
   updateMaintenance,
 } from "@/lib/api/admin";
-import { ApiError, isValidationError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
 import { formatCurrency, formatDateTime } from "@/lib/format";
-import { mapValidationErrors, summarizeValidationErrors } from "@/lib/validation";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { useAdminQuery, useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Maintenance } from "@/types/api";
 import {
   AdminCollapsibleFormCard,
+  AdminFormField,
   EmptyState,
   ErrorMessage,
+  FormGlobalError,
+  inputErrorClass,
   PageHeader,
   Pagination,
   scrollToAdminForm,
@@ -38,17 +41,6 @@ const emptyForm = {
   notes: "",
 };
 
-const FIELD_LABELS: Record<string, string> = {
-  vehicle_id: "Vehicle",
-  maintenance_type_slug: "Maintenance type",
-  maintenance_date: "Maintenance date",
-  next_maintenance_date: "Next maintenance date",
-  mileage: "Mileage",
-  cost: "Cost",
-  garage_name: "Garage name",
-  notes: "Notes",
-};
-
 export default function MaintenancesPage() {
   const queryClient = useQueryClient();
   const formRef = useRef<HTMLDivElement>(null);
@@ -56,10 +48,10 @@ export default function MaintenancesPage() {
   const [page, setPage] = useState(1);
   const [view, setView] = useState<"all" | "upcoming">("all");
   const [showForm, setShowForm] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, clearFieldError, setFieldErrors } =
+    useAdminFormErrors();
 
   const { data: vehicles } = useAdminQuery({ queryKey: queryKeys.vehicles(1), queryFn: () => getVehicles(1) });
 
@@ -95,15 +87,13 @@ export default function MaintenancesPage() {
     setEditingId(null);
     setForm(emptyForm);
     setShowForm(false);
-    setSubmitError(null);
-    setFieldErrors({});
+    resetErrors();
   };
 
   const openCreateForm = () => {
     setEditingId(null);
     setForm(emptyForm);
-    setSubmitError(null);
-    setFieldErrors({});
+    resetErrors();
     setShowForm(true);
     scrollToAdminForm(formRef);
   };
@@ -120,16 +110,14 @@ export default function MaintenancesPage() {
       garage_name: item.garage_name ?? "",
       notes: item.notes ?? "",
     });
-    setSubmitError(null);
-    setFieldErrors({});
+    resetErrors();
     setShowForm(true);
     scrollToAdminForm(formRef);
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitError(null);
-    setFieldErrors({});
+    resetErrors();
 
     const localErrors: Record<string, string> = {};
 
@@ -153,7 +141,6 @@ export default function MaintenancesPage() {
 
     if (Object.keys(localErrors).length > 0) {
       setFieldErrors(localErrors);
-      setSubmitError("Please fill in the required fields highlighted below.");
       return;
     }
 
@@ -170,15 +157,7 @@ export default function MaintenancesPage() {
         ...(editingId ? { id: editingId } : {}),
       });
     } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-
-      if (isValidationError(body)) {
-        setFieldErrors(mapValidationErrors(body.errors));
-        setSubmitError(summarizeValidationErrors(body, FIELD_LABELS));
-        return;
-      }
-
-      setSubmitError(err instanceof ApiError ? err.message : "Save failed.");
+      applySubmissionError(err, "Save failed.");
     }
   };
 
@@ -283,19 +262,15 @@ export default function MaintenancesPage() {
         formRef={formRef}
       >
         <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-          {submitError ? <div className="md:col-span-2"><ErrorMessage message={submitError} /></div> : null}
-          <div>
+          <FormGlobalError message={globalError} />
+          <AdminFormField error={fieldErrors.vehicle_id}>
             <select
               value={form.vehicle_id}
               onChange={(e) => {
                 setForm((c) => ({ ...c, vehicle_id: e.target.value }));
-                setFieldErrors((current) => {
-                  const next = { ...current };
-                  delete next.vehicle_id;
-                  return next;
-                });
+                clearFieldError("vehicle_id");
               }}
-              className={`admin-input ${fieldErrors.vehicle_id ? "border-red-400" : ""}`}
+              className={`admin-input ${inputErrorClass(fieldErrors.vehicle_id)}`}
               required
             >
               <option value="">Select vehicle</option>
@@ -303,22 +278,15 @@ export default function MaintenancesPage() {
                 <option key={v.id} value={v.id}>{v.name} ({v.plate_number})</option>
               ))}
             </select>
-            {fieldErrors.vehicle_id ? (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.vehicle_id}</p>
-            ) : null}
-          </div>
-          <div>
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.maintenance_type_slug}>
             <select
               value={form.maintenance_type_slug}
               onChange={(e) => {
                 setForm((c) => ({ ...c, maintenance_type_slug: e.target.value }));
-                setFieldErrors((current) => {
-                  const next = { ...current };
-                  delete next.maintenance_type_slug;
-                  return next;
-                });
+                clearFieldError("maintenance_type_slug");
               }}
-              className={`admin-input ${fieldErrors.maintenance_type_slug ? "border-red-400" : ""}`}
+              className={`admin-input ${inputErrorClass(fieldErrors.maintenance_type_slug)}`}
               required
             >
               <option value="">Select type</option>
@@ -326,50 +294,42 @@ export default function MaintenancesPage() {
                 <option key={item.slug} value={item.slug}>{item.name}</option>
               ))}
             </select>
-            {fieldErrors.maintenance_type_slug ? (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.maintenance_type_slug}</p>
-            ) : null}
-          </div>
-          <div>
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.maintenance_date}>
             <input
               type="date"
               value={form.maintenance_date}
               onChange={(e) => {
                 setForm((c) => ({ ...c, maintenance_date: e.target.value }));
-                setFieldErrors((current) => {
-                  const next = { ...current };
-                  delete next.maintenance_date;
-                  return next;
-                });
+                clearFieldError("maintenance_date");
               }}
-              className={`admin-input ${fieldErrors.maintenance_date ? "border-red-400" : ""}`}
+              className={`admin-input ${inputErrorClass(fieldErrors.maintenance_date)}`}
               required
             />
-            {fieldErrors.maintenance_date ? (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.maintenance_date}</p>
-            ) : null}
-          </div>
-          <div>
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.next_maintenance_date}>
             <input
               type="date"
               value={form.next_maintenance_date}
-              onChange={(e) => setForm((c) => ({ ...c, next_maintenance_date: e.target.value }))}
-              className={`admin-input ${fieldErrors.next_maintenance_date ? "border-red-400" : ""}`}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, next_maintenance_date: e.target.value }));
+                clearFieldError("next_maintenance_date");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.next_maintenance_date)}`}
             />
-            {fieldErrors.next_maintenance_date ? (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.next_maintenance_date}</p>
-            ) : null}
-          </div>
-          <div>
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.mileage}>
             <input
               placeholder="Mileage"
               value={form.mileage}
-              onChange={(e) => setForm((c) => ({ ...c, mileage: e.target.value }))}
-              className={`admin-input ${fieldErrors.mileage ? "border-red-400" : ""}`}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, mileage: e.target.value }));
+                clearFieldError("mileage");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.mileage)}`}
             />
-            {fieldErrors.mileage ? <p className="mt-1 text-xs text-red-600">{fieldErrors.mileage}</p> : null}
-          </div>
-          <div>
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.cost}>
             <input
               type="number"
               min="0.01"
@@ -378,37 +338,34 @@ export default function MaintenancesPage() {
               value={form.cost}
               onChange={(e) => {
                 setForm((c) => ({ ...c, cost: e.target.value }));
-                setFieldErrors((current) => {
-                  const next = { ...current };
-                  delete next.cost;
-                  return next;
-                });
+                clearFieldError("cost");
               }}
-              className={`admin-input ${fieldErrors.cost ? "border-red-400" : ""}`}
+              className={`admin-input ${inputErrorClass(fieldErrors.cost)}`}
               required
             />
-            {fieldErrors.cost ? <p className="mt-1 text-xs text-red-600">{fieldErrors.cost}</p> : null}
-          </div>
-          <div className="md:col-span-2">
+          </AdminFormField>
+          <AdminFormField className="md:col-span-2" error={fieldErrors.garage_name}>
             <input
               placeholder="Garage name"
               value={form.garage_name}
-              onChange={(e) => setForm((c) => ({ ...c, garage_name: e.target.value }))}
-              className={`admin-input ${fieldErrors.garage_name ? "border-red-400" : ""}`}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, garage_name: e.target.value }));
+                clearFieldError("garage_name");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.garage_name)}`}
             />
-            {fieldErrors.garage_name ? (
-              <p className="mt-1 text-xs text-red-600">{fieldErrors.garage_name}</p>
-            ) : null}
-          </div>
-          <div className="md:col-span-2">
+          </AdminFormField>
+          <AdminFormField className="md:col-span-2" error={fieldErrors.notes}>
             <textarea
               placeholder="Notes"
               value={form.notes}
-              onChange={(e) => setForm((c) => ({ ...c, notes: e.target.value }))}
-              className={`admin-input min-h-20 ${fieldErrors.notes ? "border-red-400" : ""}`}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, notes: e.target.value }));
+                clearFieldError("notes");
+              }}
+              className={`admin-input min-h-20 ${inputErrorClass(fieldErrors.notes)}`}
             />
-            {fieldErrors.notes ? <p className="mt-1 text-xs text-red-600">{fieldErrors.notes}</p> : null}
-          </div>
+          </AdminFormField>
           <div className="md:col-span-2 flex gap-3">
             <button type="submit" disabled={saveMutation.isPending} className="admin-btn-primary">
               {saveMutation.isPending ? "Saving..." : editingId ? "Update" : "Create"}

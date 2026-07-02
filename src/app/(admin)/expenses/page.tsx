@@ -12,15 +12,19 @@ import {
   getVehicles,
   updateExpense,
 } from "@/lib/api/admin";
-import { ApiError, isValidationError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
 import { formatCurrency, formatDateTime } from "@/lib/format";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { useAdminQuery, useLookupsQuery, usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Expense } from "@/types/api";
 import {
   AdminCollapsibleFormCard,
+  AdminFormField,
   EmptyState,
   ErrorMessage,
+  FormGlobalError,
+  inputErrorClass,
   PageHeader,
   Pagination,
   scrollToAdminForm,
@@ -41,11 +45,11 @@ export default function ExpensesPage() {
   const { data: lookups } = useLookupsQuery();
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingHasInvoice, setEditingHasInvoice] = useState(false);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, clearFieldError } = useAdminFormErrors();
 
   const { data: vehicles } = useAdminQuery({ queryKey: queryKeys.vehicles(1), queryFn: () => getVehicles(1) });
 
@@ -87,7 +91,7 @@ export default function ExpensesPage() {
     setEditingHasInvoice(false);
     setInvoiceFile(null);
     setShowForm(false);
-    setSubmitError(null);
+    resetErrors();
   };
 
   const openCreateForm = () => {
@@ -95,7 +99,7 @@ export default function ExpensesPage() {
     setForm(emptyForm);
     setEditingHasInvoice(false);
     setInvoiceFile(null);
-    setSubmitError(null);
+    resetErrors();
     setShowForm(true);
     scrollToAdminForm(formRef);
   };
@@ -111,14 +115,14 @@ export default function ExpensesPage() {
     });
     setEditingHasInvoice(expense.has_invoice);
     setInvoiceFile(null);
-    setSubmitError(null);
+    resetErrors();
     setShowForm(true);
     scrollToAdminForm(formRef);
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitError(null);
+    resetErrors();
     try {
       await saveMutation.mutateAsync({
         vehicle_id: form.vehicle_id ? Number(form.vehicle_id) : null,
@@ -129,10 +133,7 @@ export default function ExpensesPage() {
         ...(editingId ? { id: editingId } : {}),
       });
     } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-      setSubmitError(
-        isValidationError(body) ? body.message : err instanceof ApiError ? err.message : "Save failed.",
-      );
+      applySubmissionError(err, "Save failed.");
     }
   };
 
@@ -222,32 +223,76 @@ export default function ExpensesPage() {
         formRef={formRef}
       >
         <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-          {submitError ? <div className="md:col-span-2"><ErrorMessage message={submitError} /></div> : null}
-          <select
-            value={form.vehicle_id}
-            onChange={(e) => setForm((c) => ({ ...c, vehicle_id: e.target.value }))}
-            className="admin-input"
-          >
-            <option value="">No vehicle (general expense)</option>
-            {vehicles?.data.map((v) => (
-              <option key={v.id} value={v.id}>{v.name}</option>
-            ))}
-          </select>
-          <select
-            value={form.expense_category_slug}
-            onChange={(e) => setForm((c) => ({ ...c, expense_category_slug: e.target.value }))}
-            className="admin-input"
-          >
-            {lookups?.expense_categories.map((item) => (
-              <option key={item.slug} value={item.slug}>{item.name}</option>
-            ))}
-          </select>
-          <input type="number" placeholder="Amount" value={form.amount} onChange={(e) => setForm((c) => ({ ...c, amount: e.target.value }))} className="admin-input" required />
-          <input type="date" value={form.expense_date} onChange={(e) => setForm((c) => ({ ...c, expense_date: e.target.value }))} className="admin-input" required />
-          <input placeholder="Description" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} className="admin-input md:col-span-2" />
+          <FormGlobalError message={globalError} />
+          <AdminFormField error={fieldErrors.vehicle_id}>
+            <select
+              value={form.vehicle_id}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, vehicle_id: e.target.value }));
+                clearFieldError("vehicle_id");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.vehicle_id)}`}
+            >
+              <option value="">No vehicle (general expense)</option>
+              {vehicles?.data.map((v) => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.expense_category_slug}>
+            <select
+              value={form.expense_category_slug}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, expense_category_slug: e.target.value }));
+                clearFieldError("expense_category_slug");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.expense_category_slug)}`}
+            >
+              {lookups?.expense_categories.map((item) => (
+                <option key={item.slug} value={item.slug}>{item.name}</option>
+              ))}
+            </select>
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.amount}>
+            <input
+              type="number"
+              placeholder="Amount"
+              value={form.amount}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, amount: e.target.value }));
+                clearFieldError("amount");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.amount)}`}
+              required
+            />
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.expense_date}>
+            <input
+              type="date"
+              value={form.expense_date}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, expense_date: e.target.value }));
+                clearFieldError("expense_date");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.expense_date)}`}
+              required
+            />
+          </AdminFormField>
+          <AdminFormField className="md:col-span-2" error={fieldErrors.description}>
+            <input
+              placeholder="Description"
+              value={form.description}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, description: e.target.value }));
+                clearFieldError("description");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.description)}`}
+            />
+          </AdminFormField>
           <AdminFileUpload
             className="md:col-span-2"
             label="Invoice"
+            error={fieldErrors.invoice}
             hint={
               editingId && editingHasInvoice
                 ? "An invoice is already attached. Upload a new file to replace it."

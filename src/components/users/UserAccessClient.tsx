@@ -13,18 +13,20 @@ import {
   syncUserPermissions,
   updateUser,
 } from "@/lib/api/admin";
-import { ApiError, isValidationError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { useAdminQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Permission } from "@/types/api";
-import { AdminFormField, ErrorMessage, PageHeader } from "@/components/ui/AdminUi";
+import { AdminFormField, ErrorMessage, FormGlobalError, inputErrorClass, PageHeader } from "@/components/ui/AdminUi";
 import { useAuth } from "@/contexts/AuthContext";
 
 export function UserAccessClient({ id }: { id: number }) {
   const queryClient = useQueryClient();
   const { hasPermission } = useAuth();
   const canAssign = hasPermission("permissions.assign");
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, clearFieldError } =
+    useAdminFormErrors();
   const [success, setSuccess] = useState<string | null>(null);
   const [roleIds, setRoleIds] = useState<number[]>([]);
   const [selectedPermissionIds, setSelectedPermissionIds] = useState<number[]>([]);
@@ -113,7 +115,7 @@ export function UserAccessClient({ id }: { id: number }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.user(id) });
       setSuccess("User profile updated.");
-      setSubmitError(null);
+      resetErrors();
     },
   });
 
@@ -126,7 +128,7 @@ export function UserAccessClient({ id }: { id: number }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: queryKeys.user(id) });
       setSuccess("Permissions updated.");
-      setSubmitError(null);
+      resetErrors();
     },
   });
 
@@ -136,37 +138,42 @@ export function UserAccessClient({ id }: { id: number }) {
       queryClient.invalidateQueries({ queryKey: queryKeys.roles });
       queryClient.invalidateQueries({ queryKey: queryKeys.user(id) });
       setSuccess("Role permissions updated for all users with this role.");
-      setSubmitError(null);
+      resetErrors();
     },
   });
 
   const handleProfileSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitError(null);
+    resetErrors();
     setSuccess(null);
 
     try {
       await saveProfileMutation.mutateAsync();
     } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-      setSubmitError(
-        isValidationError(body) ? body.message : err instanceof ApiError ? err.message : "Save failed.",
-      );
+      applySubmissionError(err, "Save failed.");
     }
   };
 
   const handlePermissionsSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitError(null);
+    resetErrors();
     setSuccess(null);
 
     try {
       await savePermissionsMutation.mutateAsync();
     } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-      setSubmitError(
-        isValidationError(body) ? body.message : err instanceof ApiError ? err.message : "Save failed.",
-      );
+      applySubmissionError(err, "Save failed.");
+    }
+  };
+
+  const handleRolePermissionsSave = async () => {
+    resetErrors();
+    setSuccess(null);
+
+    try {
+      await saveRolePermissionsMutation.mutateAsync();
+    } catch (err) {
+      applySubmissionError(err, "Save failed.");
     }
   };
 
@@ -206,7 +213,7 @@ export function UserAccessClient({ id }: { id: number }) {
         description={`Manage roles and permissions for ${data.data.email}.`}
       />
 
-      {submitError ? <ErrorMessage message={submitError} /> : null}
+      <FormGlobalError message={globalError} />
       {success ? (
         <p className="mb-4 rounded-lg border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">
           {success}
@@ -216,28 +223,37 @@ export function UserAccessClient({ id }: { id: number }) {
       <form onSubmit={handleProfileSubmit} className="admin-card mb-6 space-y-4 p-6">
         <h2 className="text-lg font-bold text-gray-900">Account</h2>
         <div className="grid gap-4 md:grid-cols-2">
-          <AdminFormField label="Name">
+          <AdminFormField label="Name" error={fieldErrors.name}>
             <input
-              className="admin-input"
+              className={`admin-input ${inputErrorClass(fieldErrors.name)}`}
               value={profileForm.name}
-              onChange={(e) => setProfileForm((c) => ({ ...c, name: e.target.value }))}
+              onChange={(e) => {
+                setProfileForm((c) => ({ ...c, name: e.target.value }));
+                clearFieldError("name");
+              }}
               required
             />
           </AdminFormField>
-          <AdminFormField label="Email">
+          <AdminFormField label="Email" error={fieldErrors.email}>
             <input
               type="email"
-              className="admin-input"
+              className={`admin-input ${inputErrorClass(fieldErrors.email)}`}
               value={profileForm.email}
-              onChange={(e) => setProfileForm((c) => ({ ...c, email: e.target.value }))}
+              onChange={(e) => {
+                setProfileForm((c) => ({ ...c, email: e.target.value }));
+                clearFieldError("email");
+              }}
               required
             />
           </AdminFormField>
-          <AdminFormField label="Phone">
+          <AdminFormField label="Phone" error={fieldErrors.phone}>
             <input
-              className="admin-input"
+              className={`admin-input ${inputErrorClass(fieldErrors.phone)}`}
               value={profileForm.phone}
-              onChange={(e) => setProfileForm((c) => ({ ...c, phone: e.target.value }))}
+              onChange={(e) => {
+                setProfileForm((c) => ({ ...c, phone: e.target.value }));
+                clearFieldError("phone");
+              }}
             />
           </AdminFormField>
           <AdminFormField label="Status">
@@ -406,7 +422,7 @@ export function UserAccessClient({ id }: { id: number }) {
             <button
               type="button"
               disabled={!roleEditorId || saveRolePermissionsMutation.isPending}
-              onClick={() => void saveRolePermissionsMutation.mutateAsync()}
+              onClick={() => void handleRolePermissionsSave()}
               className="admin-btn-secondary"
             >
               {saveRolePermissionsMutation.isPending ? "Saving..." : "Save role permissions"}

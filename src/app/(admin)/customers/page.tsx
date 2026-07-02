@@ -10,14 +10,18 @@ import {
   deleteCustomer,
   getCustomers,
 } from "@/lib/api/admin";
-import { ApiError, isValidationError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Customer } from "@/types/api";
 import {
   AdminCollapsibleFormCard,
+  AdminFormField,
   EmptyState,
   ErrorMessage,
+  FormGlobalError,
+  inputErrorClass,
   PageHeader,
   Pagination,
   scrollToAdminForm,
@@ -37,8 +41,8 @@ export default function CustomersPage() {
   const formRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, clearFieldError } = useAdminFormErrors();
 
   const { data, isPending, isFetching, error } = usePaginatedQuery(
     queryKeys.customers(page),
@@ -64,19 +68,19 @@ export default function CustomersPage() {
   const resetForm = () => {
     setForm(emptyForm);
     setShowForm(false);
-    setSubmitError(null);
+    resetErrors();
   };
 
   const openCreateForm = () => {
     setForm(emptyForm);
-    setSubmitError(null);
+    resetErrors();
     setShowForm(true);
     scrollToAdminForm(formRef);
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitError(null);
+    resetErrors();
     try {
       await saveMutation.mutateAsync({
         full_name: form.full_name,
@@ -87,10 +91,7 @@ export default function CustomersPage() {
         driving_license_number: form.driving_license_number || null,
       });
     } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-      setSubmitError(
-        isValidationError(body) ? body.message : err instanceof ApiError ? err.message : "Save failed.",
-      );
+      applySubmissionError(err, "Save failed.");
     }
   };
 
@@ -181,7 +182,7 @@ export default function CustomersPage() {
 
       <AdminCollapsibleFormCard open={showForm} title="Add customer" formRef={formRef}>
         <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-          {submitError ? <div className="md:col-span-2"><ErrorMessage message={submitError} /></div> : null}
+          <FormGlobalError message={globalError} />
           {[
             ["full_name", "Full name"],
             ["nationality", "Nationality"],
@@ -190,14 +191,18 @@ export default function CustomersPage() {
             ["passport_or_cin", "Passport / CIN"],
             ["driving_license_number", "Driving license"],
           ].map(([key, label]) => (
-            <input
-              key={key}
-              placeholder={label}
-              value={form[key as keyof typeof form]}
-              onChange={(event) => setForm((current) => ({ ...current, [key]: event.target.value }))}
-              className="admin-input"
-              required={["full_name", "nationality", "phone"].includes(key)}
-            />
+            <AdminFormField key={key} error={fieldErrors[key]}>
+              <input
+                placeholder={label}
+                value={form[key as keyof typeof form]}
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, [key]: event.target.value }));
+                  clearFieldError(key);
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors[key])}`}
+                required={["full_name", "nationality", "phone"].includes(key)}
+              />
+            </AdminFormField>
           ))}
           <div className="md:col-span-2 flex gap-3">
             <button type="submit" disabled={saveMutation.isPending} className="admin-btn-primary">

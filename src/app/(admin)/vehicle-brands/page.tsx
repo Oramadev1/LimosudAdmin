@@ -10,6 +10,8 @@ import {
   AdminFormField,
   EmptyState,
   ErrorMessage,
+  FormGlobalError,
+  inputErrorClass,
   PageHeader,
   Pagination,
   scrollToAdminForm,
@@ -24,6 +26,7 @@ import {
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { slugify } from "@/lib/format";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { storageUrl } from "@/lib/images";
 import { usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
@@ -41,7 +44,8 @@ export default function VehicleBrandsPage() {
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editingBrand, setEditingBrand] = useState<VehicleBrand | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, clearFieldError } =
+    useAdminFormErrors();
 
   const { data, isPending, isFetching, error } = usePaginatedQuery(
     queryKeys.vehicleBrands(page),
@@ -99,7 +103,7 @@ export default function VehicleBrandsPage() {
     setLogoFile(null);
     setLogoPreview(null);
     setShowForm(false);
-    setSubmitError(null);
+    resetErrors();
     if (logoInputRef.current) logoInputRef.current.value = "";
   };
 
@@ -129,14 +133,14 @@ export default function VehicleBrandsPage() {
     setLogoFile(null);
     setLogoPreview(brand.image_path ? storageUrl(brand.image_path) : null);
     setShowForm(true);
-    setSubmitError(null);
+    resetErrors();
     if (logoInputRef.current) logoInputRef.current.value = "";
     scrollToAdminForm(formRef);
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitError(null);
+    resetErrors();
     try {
       await saveMutation.mutateAsync({
         name,
@@ -145,7 +149,7 @@ export default function VehicleBrandsPage() {
         ...(editingId ? { id: editingId } : {}),
       });
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : "Save failed.");
+      applySubmissionError(err, "Save failed.");
     }
   };
 
@@ -253,13 +257,16 @@ export default function VehicleBrandsPage() {
         formRef={formRef}
       >
         <form onSubmit={handleSubmit} className="max-w-xl space-y-4">
-          {submitError ? <ErrorMessage message={submitError} /> : null}
-          <AdminFormField label="Brand name" hint="Example: Toyota, BMW, Mercedes.">
+          <FormGlobalError message={globalError} />
+          <AdminFormField label="Brand name" hint="Example: Toyota, BMW, Mercedes." error={fieldErrors.name}>
             <input
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(event) => {
+                setName(event.target.value);
+                clearFieldError("name");
+              }}
               placeholder="Enter brand name"
-              className="admin-input"
+              className={`admin-input ${inputErrorClass(fieldErrors.name)}`}
               required
             />
           </AdminFormField>

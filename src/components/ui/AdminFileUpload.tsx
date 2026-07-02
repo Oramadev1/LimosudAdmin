@@ -8,6 +8,7 @@ import { AdminFormField } from "@/components/ui/AdminUi";
 type AdminFileUploadProps = {
   label: string;
   hint?: string;
+  error?: string;
   accept: string;
   file: File | null;
   onFileChange: (file: File | null) => void;
@@ -19,6 +20,7 @@ type AdminFileUploadProps = {
 export function AdminFileUpload({
   label,
   hint,
+  error,
   accept,
   file,
   onFileChange,
@@ -59,7 +61,7 @@ export function AdminFileUpload({
 
   return (
     <div className={className}>
-      <AdminFormField label={label} hint={hint}>
+      <AdminFormField label={label} hint={hint} error={error}>
         <label className="group block cursor-pointer">
           <div className="flex min-h-[9rem] w-full items-center justify-center overflow-hidden rounded-[8px] border border-dashed border-gray-200 bg-gray-50 p-4 text-center transition-colors group-hover:border-[#3563E9] group-hover:bg-blue-50/40">
             {preview ? (

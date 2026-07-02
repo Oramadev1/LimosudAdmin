@@ -10,8 +10,9 @@ import {
   getLocations,
   updateLocation,
 } from "@/lib/api/admin";
-import { ApiError, isValidationError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
 import { slugify } from "@/lib/format";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { Location } from "@/types/api";
@@ -20,6 +21,8 @@ import {
   AdminFormField,
   EmptyState,
   ErrorMessage,
+  FormGlobalError,
+  inputErrorClass,
   PageHeader,
   Pagination,
   scrollToAdminForm,
@@ -38,9 +41,10 @@ export default function LocationsPage() {
   const formRef = useRef<HTMLDivElement>(null);
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, clearFieldError } =
+    useAdminFormErrors();
 
   const { data, isPending, isFetching, error } = usePaginatedQuery(
     queryKeys.locations(page),
@@ -75,13 +79,13 @@ export default function LocationsPage() {
     setEditingId(null);
     setForm(emptyForm);
     setShowForm(false);
-    setSubmitError(null);
+    resetErrors();
   };
 
   const openCreateForm = () => {
     setEditingId(null);
     setForm(emptyForm);
-    setSubmitError(null);
+    resetErrors();
     setShowForm(true);
     scrollToAdminForm(formRef);
   };
@@ -95,14 +99,14 @@ export default function LocationsPage() {
       delivery_fee: location.delivery_fee,
       is_active: location.is_active,
     });
-    setSubmitError(null);
+    resetErrors();
     setShowForm(true);
     scrollToAdminForm(formRef);
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitError(null);
+    resetErrors();
 
     const payload = {
       name: form.name,
@@ -118,14 +122,7 @@ export default function LocationsPage() {
     try {
       await saveMutation.mutateAsync(payload);
     } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-      setSubmitError(
-        isValidationError(body)
-          ? body.message
-          : err instanceof ApiError
-            ? err.message
-            : "Save failed.",
-      );
+      applySubmissionError(err, "Save failed.");
     }
   };
 
@@ -208,48 +205,62 @@ export default function LocationsPage() {
         formRef={formRef}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {submitError ? <ErrorMessage message={submitError} /> : null}
+          <FormGlobalError message={globalError} />
           <div className="grid gap-4 md:grid-cols-2">
-            <AdminFormField label="Name">
+            <AdminFormField label="Name" error={fieldErrors.name}>
               <input
                 placeholder="e.g. Dakhla Airport"
                 value={form.name}
-                onChange={(event) =>
+                onChange={(event) => {
                   setForm((current) => ({
                     ...current,
                     name: event.target.value,
                     slug: editingId ? current.slug : slugify(event.target.value),
-                  }))
-                }
-                className="admin-input"
+                  }));
+                  clearFieldError("name");
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors.name)}`}
                 required
               />
             </AdminFormField>
-            <AdminFormField label="Slug" hint="Used in URLs. Auto-filled from the name.">
+            <AdminFormField label="Slug" hint="Used in URLs. Auto-filled from the name." error={fieldErrors.slug}>
               <input
                 placeholder="dakhla-airport"
                 value={form.slug}
-                onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))}
-                className="admin-input"
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, slug: event.target.value }));
+                  clearFieldError("slug");
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors.slug)}`}
                 required
               />
             </AdminFormField>
-            <AdminFormField label="Address">
+            <AdminFormField label="Address" error={fieldErrors.address}>
               <input
                 placeholder="Street, city"
                 value={form.address}
-                onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
-                className="admin-input"
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, address: event.target.value }));
+                  clearFieldError("address");
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors.address)}`}
               />
             </AdminFormField>
-            <AdminFormField label="Delivery fee (MAD)" hint="Extra charge when this location is used for pick-up or drop-off.">
+            <AdminFormField
+              label="Delivery fee (MAD)"
+              hint="Extra charge when this location is used for pick-up or drop-off."
+              error={fieldErrors.delivery_fee}
+            >
               <input
                 type="number"
                 min="0"
                 step="0.01"
                 value={form.delivery_fee}
-                onChange={(event) => setForm((current) => ({ ...current, delivery_fee: event.target.value }))}
-                className="admin-input"
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, delivery_fee: event.target.value }));
+                  clearFieldError("delivery_fee");
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors.delivery_fee)}`}
               />
             </AdminFormField>
           </div>

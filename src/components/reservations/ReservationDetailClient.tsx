@@ -16,7 +16,8 @@ import {
   markContractSigned,
   reservationAction,
 } from "@/lib/api/admin";
-import { ApiError, isValidationError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import {
   getPaymentStatusBadgeClass,
@@ -37,7 +38,7 @@ import {
 import { useAdminQuery, useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import { useSubmitLock } from "@/lib/use-submit-lock";
-import { AdminFormField, DetailRow, ErrorMessage, SectionCard } from "@/components/ui/AdminUi";
+import { AdminFormField, DetailRow, ErrorMessage, FormGlobalError, inputErrorClass, SectionCard } from "@/components/ui/AdminUi";
 import { ContractGenerateModal } from "@/components/reservations/ContractGenerateModal";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAuth } from "@/contexts/AuthContext";
@@ -62,6 +63,13 @@ export function ReservationDetailClient({ id }: { id: number }) {
     reference: "",
     notes: "",
   });
+  const {
+    globalError: paymentGlobalError,
+    fieldErrors: paymentFieldErrors,
+    resetErrors: resetPaymentErrors,
+    applySubmissionError: applyPaymentError,
+    clearFieldError: clearPaymentFieldError,
+  } = useAdminFormErrors();
 
   const { data, isPending } = useAdminQuery({
     queryKey: queryKeys.reservation(id),
@@ -117,7 +125,7 @@ export function ReservationDetailClient({ id }: { id: number }) {
 
   const handlePayment = async (event: FormEvent) => {
     event.preventDefault();
-    setError(null);
+    resetPaymentErrors();
     try {
       await paymentMutation.mutateAsync({
         reservation_id: id,
@@ -131,10 +139,7 @@ export function ReservationDetailClient({ id }: { id: number }) {
       });
       setPaymentForm((c) => ({ ...c, amount: "", reference: "", notes: "" }));
     } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-      setError(
-        isValidationError(body) ? body.message : err instanceof ApiError ? err.message : "Payment failed.",
-      );
+      applyPaymentError(err, "Payment failed.");
     }
   };
 
@@ -408,54 +413,70 @@ export function ReservationDetailClient({ id }: { id: number }) {
       {paymentAllowed ? (
         <form onSubmit={handlePayment} className="admin-card mt-4 space-y-4 p-6">
           <h2 className="admin-section-title">Record payment</h2>
+          <FormGlobalError message={paymentGlobalError} />
           <div className="grid gap-4 md:grid-cols-2">
-            <AdminFormField label="Amount">
+            <AdminFormField label="Amount" error={paymentFieldErrors.amount}>
               <input
                 type="number"
                 placeholder="0.00"
                 value={paymentForm.amount}
-                onChange={(e) => setPaymentForm((c) => ({ ...c, amount: e.target.value }))}
-                className="admin-input"
+                onChange={(e) => {
+                  setPaymentForm((c) => ({ ...c, amount: e.target.value }));
+                  clearPaymentFieldError("amount");
+                }}
+                className={`admin-input ${inputErrorClass(paymentFieldErrors.amount)}`}
                 required
               />
             </AdminFormField>
-            <AdminFormField label="Payment date">
+            <AdminFormField label="Payment date" error={paymentFieldErrors.payment_date}>
               <input
                 type="date"
                 value={paymentForm.payment_date}
-                onChange={(e) => setPaymentForm((c) => ({ ...c, payment_date: e.target.value }))}
-                className="admin-input"
+                onChange={(e) => {
+                  setPaymentForm((c) => ({ ...c, payment_date: e.target.value }));
+                  clearPaymentFieldError("payment_date");
+                }}
+                className={`admin-input ${inputErrorClass(paymentFieldErrors.payment_date)}`}
                 required
               />
             </AdminFormField>
-            <AdminFormField label="Method">
+            <AdminFormField label="Method" error={paymentFieldErrors.payment_method_slug}>
               <select
                 value={paymentForm.payment_method_slug}
-                onChange={(e) => setPaymentForm((c) => ({ ...c, payment_method_slug: e.target.value }))}
-                className="admin-input"
+                onChange={(e) => {
+                  setPaymentForm((c) => ({ ...c, payment_method_slug: e.target.value }));
+                  clearPaymentFieldError("payment_method_slug");
+                }}
+                className={`admin-input ${inputErrorClass(paymentFieldErrors.payment_method_slug)}`}
               >
                 {lookups?.payment_methods.map((item) => (
                   <option key={item.slug} value={item.slug}>{item.name}</option>
                 ))}
               </select>
             </AdminFormField>
-            <AdminFormField label="Type">
+            <AdminFormField label="Type" error={paymentFieldErrors.payment_type_slug}>
               <select
                 value={paymentForm.payment_type_slug}
-                onChange={(e) => setPaymentForm((c) => ({ ...c, payment_type_slug: e.target.value }))}
-                className="admin-input"
+                onChange={(e) => {
+                  setPaymentForm((c) => ({ ...c, payment_type_slug: e.target.value }));
+                  clearPaymentFieldError("payment_type_slug");
+                }}
+                className={`admin-input ${inputErrorClass(paymentFieldErrors.payment_type_slug)}`}
               >
                 {lookups?.payment_types.map((item) => (
                   <option key={item.slug} value={item.slug}>{item.name}</option>
                 ))}
               </select>
             </AdminFormField>
-            <AdminFormField label="Reference">
+            <AdminFormField label="Reference" error={paymentFieldErrors.reference}>
               <input
                 placeholder="Receipt or transfer reference"
                 value={paymentForm.reference}
-                onChange={(e) => setPaymentForm((c) => ({ ...c, reference: e.target.value }))}
-                className="admin-input"
+                onChange={(e) => {
+                  setPaymentForm((c) => ({ ...c, reference: e.target.value }));
+                  clearPaymentFieldError("reference");
+                }}
+                className={`admin-input ${inputErrorClass(paymentFieldErrors.reference)}`}
               />
             </AdminFormField>
           </div>

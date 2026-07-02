@@ -10,16 +10,20 @@ import {
   getPayments,
   getReservations,
 } from "@/lib/api/admin";
-import { ApiError, isValidationError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
 import { formatCurrency, formatDateTime } from "@/lib/format";
 import { useAuth } from "@/contexts/AuthContext";
 import { canRecordPayment } from "@/lib/reservation-workflow";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { useAdminQuery, useLookupsQuery, usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import {
   AdminCollapsibleFormCard,
+  AdminFormField,
   EmptyState,
   ErrorMessage,
+  FormGlobalError,
+  inputErrorClass,
   PageHeader,
   Pagination,
   scrollToAdminForm,
@@ -43,8 +47,9 @@ export default function PaymentsPage() {
   const { data: lookups } = useLookupsQuery();
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, clearFieldError } =
+    useAdminFormErrors();
 
   const { data, isPending, isFetching, error } = usePaginatedQuery(
     queryKeys.payments(page),
@@ -83,19 +88,19 @@ export default function PaymentsPage() {
   const resetForm = () => {
     setForm(emptyForm);
     setShowForm(false);
-    setSubmitError(null);
+    resetErrors();
   };
 
   const openCreateForm = () => {
     setForm(emptyForm);
-    setSubmitError(null);
+    resetErrors();
     setShowForm(true);
     scrollToAdminForm(formRef);
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitError(null);
+    resetErrors();
     try {
       await createMutation.mutateAsync({
         reservation_id: Number(form.reservation_id),
@@ -108,10 +113,7 @@ export default function PaymentsPage() {
         notes: form.notes || null,
       });
     } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-      setSubmitError(
-        isValidationError(body) ? body.message : err instanceof ApiError ? err.message : "Save failed.",
-      );
+      applySubmissionError(err, "Save failed.");
     }
   };
 
@@ -194,53 +196,78 @@ export default function PaymentsPage() {
       {canManagePayments ? (
         <AdminCollapsibleFormCard open={showForm} title="Record payment" formRef={formRef}>
           <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-            {submitError ? <div className="md:col-span-2"><ErrorMessage message={submitError} /></div> : null}
-            <select
-              value={form.reservation_id}
-              onChange={(e) => setForm((c) => ({ ...c, reservation_id: e.target.value }))}
-              className="admin-input"
-              required
-            >
-              <option value="">Select reservation</option>
-              {payableReservations.map((r) => (
-                <option key={r.id} value={r.id}>
-                  {r.reservation_number} — {r.customer.full_name} ({r.status.name})
-                </option>
-              ))}
-            </select>
-            <input
-              type="number"
-              placeholder="Amount"
-              value={form.amount}
-              onChange={(e) => setForm((c) => ({ ...c, amount: e.target.value }))}
-              className="admin-input"
-              required
-            />
-            <input
-              type="date"
-              value={form.payment_date}
-              onChange={(e) => setForm((c) => ({ ...c, payment_date: e.target.value }))}
-              className="admin-input"
-              required
-            />
-            <select
-              value={form.payment_method_slug}
-              onChange={(e) => setForm((c) => ({ ...c, payment_method_slug: e.target.value }))}
-              className="admin-input"
-            >
-              {lookups?.payment_methods.map((item) => (
-                <option key={item.slug} value={item.slug}>{item.name}</option>
-              ))}
-            </select>
-            <select
-              value={form.payment_type_slug}
-              onChange={(e) => setForm((c) => ({ ...c, payment_type_slug: e.target.value }))}
-              className="admin-input"
-            >
-              {lookups?.payment_types.map((item) => (
-                <option key={item.slug} value={item.slug}>{item.name}</option>
-              ))}
-            </select>
+            <FormGlobalError message={globalError} />
+            <AdminFormField error={fieldErrors.reservation_id}>
+              <select
+                value={form.reservation_id}
+                onChange={(e) => {
+                  setForm((c) => ({ ...c, reservation_id: e.target.value }));
+                  clearFieldError("reservation_id");
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors.reservation_id)}`}
+                required
+              >
+                <option value="">Select reservation</option>
+                {payableReservations.map((r) => (
+                  <option key={r.id} value={r.id}>
+                    {r.reservation_number} — {r.customer.full_name} ({r.status.name})
+                  </option>
+                ))}
+              </select>
+            </AdminFormField>
+            <AdminFormField error={fieldErrors.amount}>
+              <input
+                type="number"
+                placeholder="Amount"
+                value={form.amount}
+                onChange={(e) => {
+                  setForm((c) => ({ ...c, amount: e.target.value }));
+                  clearFieldError("amount");
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors.amount)}`}
+                required
+              />
+            </AdminFormField>
+            <AdminFormField error={fieldErrors.payment_date}>
+              <input
+                type="date"
+                value={form.payment_date}
+                onChange={(e) => {
+                  setForm((c) => ({ ...c, payment_date: e.target.value }));
+                  clearFieldError("payment_date");
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors.payment_date)}`}
+                required
+              />
+            </AdminFormField>
+            <AdminFormField error={fieldErrors.payment_method_slug}>
+              <select
+                value={form.payment_method_slug}
+                onChange={(e) => {
+                  setForm((c) => ({ ...c, payment_method_slug: e.target.value }));
+                  clearFieldError("payment_method_slug");
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors.payment_method_slug)}`}
+              >
+                {lookups?.payment_methods.map((item) => (
+                  <option key={item.slug} value={item.slug}>{item.name}</option>
+                ))}
+              </select>
+            </AdminFormField>
+            <AdminFormField error={fieldErrors.payment_type_slug}>
+              <select
+                value={form.payment_type_slug}
+                onChange={(e) => {
+                  setForm((c) => ({ ...c, payment_type_slug: e.target.value }));
+                  clearFieldError("payment_type_slug");
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors.payment_type_slug)}`}
+              >
+                {lookups?.payment_types.map((item) => (
+                  <option key={item.slug} value={item.slug}>{item.name}</option>
+                ))}
+              </select>
+            </AdminFormField>
             <div className="md:col-span-2 flex gap-3">
               <button type="submit" disabled={createMutation.isPending} className="admin-btn-primary">
                 {createMutation.isPending ? "Saving..." : "Add payment"}

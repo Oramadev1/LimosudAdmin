@@ -7,18 +7,26 @@ import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import { getCustomer, updateCustomer } from "@/lib/api/admin";
-import { ApiError, isValidationError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { useAdminQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { CreateCustomerPayload } from "@/types/api";
-import { AdminFormField, ErrorMessage, PageHeader } from "@/components/ui/AdminUi";
+import {
+  AdminFormField,
+  ErrorMessage,
+  FormGlobalError,
+  inputErrorClass,
+  PageHeader,
+} from "@/components/ui/AdminUi";
 
 export function CustomerEditClient({ id }: { id: number }) {
   const router = useRouter();
   const searchParams = useSearchParams();
   const queryClient = useQueryClient();
   const returnTo = searchParams.get("returnTo");
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, clearFieldError } =
+    useAdminFormErrors();
   const [form, setForm] = useState({
     full_name: "",
     nationality: "",
@@ -73,7 +81,7 @@ export function CustomerEditClient({ id }: { id: number }) {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitError(null);
+    resetErrors();
 
     try {
       await saveMutation.mutateAsync({
@@ -91,10 +99,7 @@ export function CustomerEditClient({ id }: { id: number }) {
         driving_license_country: form.driving_license_country || null,
       });
     } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-      setSubmitError(
-        isValidationError(body) ? body.message : err instanceof ApiError ? err.message : "Save failed.",
-      );
+      applySubmissionError(err, "Save failed.");
     }
   };
 
@@ -122,110 +127,134 @@ export function CustomerEditClient({ id }: { id: number }) {
       />
 
       <form onSubmit={handleSubmit} className="admin-card space-y-4 p-6">
-        {submitError ? <ErrorMessage message={submitError} /> : null}
+        <FormGlobalError message={globalError} />
 
         <div className="grid gap-4 md:grid-cols-2">
-          <AdminFormField label="Full name">
+          <AdminFormField label="Full name" error={fieldErrors.full_name}>
             <input
               value={form.full_name}
-              onChange={(event) => setForm((current) => ({ ...current, full_name: event.target.value }))}
-              className="admin-input"
+              onChange={(event) => {
+                setForm((current) => ({ ...current, full_name: event.target.value }));
+                clearFieldError("full_name");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.full_name)}`}
               required
             />
           </AdminFormField>
-          <AdminFormField label="Nationality">
+          <AdminFormField label="Nationality" error={fieldErrors.nationality}>
             <input
               value={form.nationality}
-              onChange={(event) => setForm((current) => ({ ...current, nationality: event.target.value }))}
-              className="admin-input"
+              onChange={(event) => {
+                setForm((current) => ({ ...current, nationality: event.target.value }));
+                clearFieldError("nationality");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.nationality)}`}
               required
             />
           </AdminFormField>
-          <AdminFormField label="Phone">
+          <AdminFormField label="Phone" error={fieldErrors.phone}>
             <input
               value={form.phone}
-              onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
-              className="admin-input"
+              onChange={(event) => {
+                setForm((current) => ({ ...current, phone: event.target.value }));
+                clearFieldError("phone");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.phone)}`}
               required
             />
           </AdminFormField>
-          <AdminFormField label="Email">
+          <AdminFormField label="Email" error={fieldErrors.email}>
             <input
               type="email"
               value={form.email}
-              onChange={(event) => setForm((current) => ({ ...current, email: event.target.value }))}
-              className="admin-input"
+              onChange={(event) => {
+                setForm((current) => ({ ...current, email: event.target.value }));
+                clearFieldError("email");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.email)}`}
             />
           </AdminFormField>
-          <AdminFormField label="Passport / CIN">
+          <AdminFormField label="Passport / CIN" error={fieldErrors.passport_or_cin}>
             <input
               value={form.passport_or_cin}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, passport_or_cin: event.target.value }))
-              }
-              className="admin-input"
+              onChange={(event) => {
+                setForm((current) => ({ ...current, passport_or_cin: event.target.value }));
+                clearFieldError("passport_or_cin");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.passport_or_cin)}`}
             />
           </AdminFormField>
-          <AdminFormField label="Driving license">
+          <AdminFormField label="Driving license" error={fieldErrors.driving_license_number}>
             <input
               value={form.driving_license_number}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, driving_license_number: event.target.value }))
-              }
-              className="admin-input"
+              onChange={(event) => {
+                setForm((current) => ({ ...current, driving_license_number: event.target.value }));
+                clearFieldError("driving_license_number");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.driving_license_number)}`}
             />
           </AdminFormField>
-          <AdminFormField label="Address">
+          <AdminFormField label="Address" error={fieldErrors.address}>
             <input
               value={form.address}
-              onChange={(event) => setForm((current) => ({ ...current, address: event.target.value }))}
-              className="admin-input"
+              onChange={(event) => {
+                setForm((current) => ({ ...current, address: event.target.value }));
+                clearFieldError("address");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.address)}`}
             />
           </AdminFormField>
-          <AdminFormField label="Foreign address">
+          <AdminFormField label="Foreign address" error={fieldErrors.foreign_address}>
             <input
               value={form.foreign_address}
-              onChange={(event) => setForm((current) => ({ ...current, foreign_address: event.target.value }))}
-              className="admin-input"
+              onChange={(event) => {
+                setForm((current) => ({ ...current, foreign_address: event.target.value }));
+                clearFieldError("foreign_address");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.foreign_address)}`}
             />
           </AdminFormField>
-          <AdminFormField label="License issued at">
+          <AdminFormField label="License issued at" error={fieldErrors.driving_license_issued_at}>
             <input
               type="date"
               value={form.driving_license_issued_at}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, driving_license_issued_at: event.target.value }))
-              }
-              className="admin-input"
+              onChange={(event) => {
+                setForm((current) => ({ ...current, driving_license_issued_at: event.target.value }));
+                clearFieldError("driving_license_issued_at");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.driving_license_issued_at)}`}
             />
           </AdminFormField>
-          <AdminFormField label="License expires at">
+          <AdminFormField label="License expires at" error={fieldErrors.driving_license_expires_at}>
             <input
               type="date"
               value={form.driving_license_expires_at}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, driving_license_expires_at: event.target.value }))
-              }
-              className="admin-input"
+              onChange={(event) => {
+                setForm((current) => ({ ...current, driving_license_expires_at: event.target.value }));
+                clearFieldError("driving_license_expires_at");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.driving_license_expires_at)}`}
             />
           </AdminFormField>
-          <AdminFormField label="License country">
+          <AdminFormField label="License country" error={fieldErrors.driving_license_country}>
             <input
               value={form.driving_license_country}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, driving_license_country: event.target.value }))
-              }
-              className="admin-input"
+              onChange={(event) => {
+                setForm((current) => ({ ...current, driving_license_country: event.target.value }));
+                clearFieldError("driving_license_country");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.driving_license_country)}`}
             />
           </AdminFormField>
-          <AdminFormField label="Passport/CIN issued at">
+          <AdminFormField label="Passport/CIN issued at" error={fieldErrors.passport_or_cin_issued_at}>
             <input
               type="date"
               value={form.passport_or_cin_issued_at}
-              onChange={(event) =>
-                setForm((current) => ({ ...current, passport_or_cin_issued_at: event.target.value }))
-              }
-              className="admin-input"
+              onChange={(event) => {
+                setForm((current) => ({ ...current, passport_or_cin_issued_at: event.target.value }));
+                clearFieldError("passport_or_cin_issued_at");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.passport_or_cin_issued_at)}`}
             />
           </AdminFormField>
         </div>

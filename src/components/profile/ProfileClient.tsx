@@ -5,19 +5,32 @@ import { FormEvent, useEffect, useState } from "react";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import { updateProfile } from "@/lib/api/auth";
-import { ApiError, isValidationError } from "@/lib/api/client";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { useAuth } from "@/contexts/AuthContext";
 import type { UpdateProfilePayload } from "@/types/api";
-import { AdminFormField, ErrorMessage, PageHeader } from "@/components/ui/AdminUi";
+import {
+  AdminFormField,
+  FormGlobalError,
+  inputErrorClass,
+  PageHeader,
+} from "@/components/ui/AdminUi";
 
 export function ProfileClient() {
   const { user, updateUser } = useAuth();
-  // const canManageTeam =
-  //   user?.roles.some((role) => role.slug === "super_admin") ||
-  //   hasPermission("users.view") ||
-  //   hasPermission("permissions.assign");
-  const [profileError, setProfileError] = useState<string | null>(null);
-  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const {
+    globalError: profileGlobalError,
+    fieldErrors: profileFieldErrors,
+    resetErrors: resetProfileErrors,
+    applySubmissionError: applyProfileSubmissionError,
+    clearFieldError: clearProfileFieldError,
+  } = useAdminFormErrors();
+  const {
+    globalError: passwordGlobalError,
+    fieldErrors: passwordFieldErrors,
+    resetErrors: resetPasswordErrors,
+    applySubmissionError: applyPasswordSubmissionError,
+    clearFieldError: clearPasswordFieldError,
+  } = useAdminFormErrors();
   const [profileSuccess, setProfileSuccess] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState<string | null>(null);
   const [profileForm, setProfileForm] = useState({
@@ -48,7 +61,7 @@ export function ProfileClient() {
     onSuccess: (response) => {
       updateUser(response.data);
       setProfileSuccess("Profile updated successfully.");
-      setProfileError(null);
+      resetProfileErrors();
     },
   });
 
@@ -62,13 +75,13 @@ export function ProfileClient() {
         password_confirmation: "",
       });
       setPasswordSuccess("Password updated successfully.");
-      setPasswordError(null);
+      resetPasswordErrors();
     },
   });
 
   const handleProfileSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setProfileError(null);
+    resetProfileErrors();
     setProfileSuccess(null);
 
     try {
@@ -78,16 +91,13 @@ export function ProfileClient() {
         phone: profileForm.phone || null,
       });
     } catch (error) {
-      const body = error instanceof ApiError ? error.body : error;
-      setProfileError(
-        isValidationError(body) ? body.message : error instanceof ApiError ? error.message : "Save failed.",
-      );
+      applyProfileSubmissionError(error, "Save failed.");
     }
   };
 
   const handlePasswordSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setPasswordError(null);
+    resetPasswordErrors();
     setPasswordSuccess(null);
 
     try {
@@ -97,14 +107,7 @@ export function ProfileClient() {
         password_confirmation: passwordForm.password_confirmation,
       });
     } catch (error) {
-      const body = error instanceof ApiError ? error.body : error;
-      setPasswordError(
-        isValidationError(body)
-          ? body.message
-          : error instanceof ApiError
-            ? error.message
-            : "Password update failed.",
-      );
+      applyPasswordSubmissionError(error, "Password update failed.");
     }
   };
 
@@ -123,7 +126,7 @@ export function ProfileClient() {
         <form onSubmit={handleProfileSubmit} className="admin-card space-y-4 p-6">
           <h2 className="text-lg font-bold text-gray-900">Account details</h2>
 
-          {profileError ? <ErrorMessage message={profileError} /> : null}
+          <FormGlobalError message={profileGlobalError} />
           {profileSuccess ? (
             <p className="rounded-lg border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">
               {profileSuccess}
@@ -131,37 +134,40 @@ export function ProfileClient() {
           ) : null}
 
           <div className="grid gap-4 md:grid-cols-2">
-            <AdminFormField label="Full name">
+            <AdminFormField label="Full name" error={profileFieldErrors.name}>
               <input
                 value={profileForm.name}
-                onChange={(event) =>
-                  setProfileForm((current) => ({ ...current, name: event.target.value }))
-                }
-                className="admin-input"
+                onChange={(event) => {
+                  setProfileForm((current) => ({ ...current, name: event.target.value }));
+                  clearProfileFieldError("name");
+                }}
+                className={`admin-input ${inputErrorClass(profileFieldErrors.name)}`}
                 required
               />
             </AdminFormField>
 
-            <AdminFormField label="Phone">
+            <AdminFormField label="Phone" error={profileFieldErrors.phone}>
               <input
                 value={profileForm.phone}
-                onChange={(event) =>
-                  setProfileForm((current) => ({ ...current, phone: event.target.value }))
-                }
-                className="admin-input"
+                onChange={(event) => {
+                  setProfileForm((current) => ({ ...current, phone: event.target.value }));
+                  clearProfileFieldError("phone");
+                }}
+                className={`admin-input ${inputErrorClass(profileFieldErrors.phone)}`}
                 placeholder="06 00 00 00 00"
               />
             </AdminFormField>
 
             <div className="md:col-span-2">
-              <AdminFormField label="Email">
+              <AdminFormField label="Email" error={profileFieldErrors.email}>
                 <input
                   type="email"
                   value={profileForm.email}
-                  onChange={(event) =>
-                    setProfileForm((current) => ({ ...current, email: event.target.value }))
-                  }
-                  className="admin-input"
+                  onChange={(event) => {
+                    setProfileForm((current) => ({ ...current, email: event.target.value }));
+                    clearProfileFieldError("email");
+                  }}
+                  className={`admin-input ${inputErrorClass(profileFieldErrors.email)}`}
                   required
                 />
               </AdminFormField>
@@ -205,18 +211,6 @@ export function ProfileClient() {
               {user.permissions.length} permission{user.permissions.length === 1 ? "" : "s"} active
             </p>
           </div>
-
-          {/* Hidden for now — re-enable when Team management is needed
-          {canManageTeam ? (
-            <Link
-              href="/users"
-              className="inline-flex items-center gap-2 rounded-lg border border-[#3563E9]/20 bg-blue-50 px-4 py-3 text-sm font-semibold text-[#3563E9] transition hover:bg-blue-100"
-            >
-              <Shield size={16} />
-              Manage team & permissions
-            </Link>
-          ) : null}
-          */}
         </aside>
       </div>
 
@@ -226,7 +220,7 @@ export function ProfileClient() {
           Leave blank if you do not want to change your password.
         </p>
 
-        {passwordError ? <ErrorMessage message={passwordError} /> : null}
+        <FormGlobalError message={passwordGlobalError} />
         {passwordSuccess ? (
           <p className="rounded-lg border border-green-100 bg-green-50 px-4 py-3 text-sm text-green-700">
             {passwordSuccess}
@@ -234,45 +228,48 @@ export function ProfileClient() {
         ) : null}
 
         <div className="grid gap-4 md:grid-cols-3">
-          <AdminFormField label="Current password">
+          <AdminFormField label="Current password" error={passwordFieldErrors.current_password}>
             <input
               type="password"
               value={passwordForm.current_password}
-              onChange={(event) =>
+              onChange={(event) => {
                 setPasswordForm((current) => ({
                   ...current,
                   current_password: event.target.value,
-                }))
-              }
-              className="admin-input"
+                }));
+                clearPasswordFieldError("current_password");
+              }}
+              className={`admin-input ${inputErrorClass(passwordFieldErrors.current_password)}`}
               autoComplete="current-password"
             />
           </AdminFormField>
 
-          <AdminFormField label="New password">
+          <AdminFormField label="New password" error={passwordFieldErrors.password}>
             <input
               type="password"
               value={passwordForm.password}
-              onChange={(event) =>
-                setPasswordForm((current) => ({ ...current, password: event.target.value }))
-              }
-              className="admin-input"
+              onChange={(event) => {
+                setPasswordForm((current) => ({ ...current, password: event.target.value }));
+                clearPasswordFieldError("password");
+              }}
+              className={`admin-input ${inputErrorClass(passwordFieldErrors.password)}`}
               autoComplete="new-password"
               minLength={8}
             />
           </AdminFormField>
 
-          <AdminFormField label="Confirm new password">
+          <AdminFormField label="Confirm new password" error={passwordFieldErrors.password_confirmation}>
             <input
               type="password"
               value={passwordForm.password_confirmation}
-              onChange={(event) =>
+              onChange={(event) => {
                 setPasswordForm((current) => ({
                   ...current,
                   password_confirmation: event.target.value,
-                }))
-              }
-              className="admin-input"
+                }));
+                clearPasswordFieldError("password_confirmation");
+              }}
+              className={`admin-input ${inputErrorClass(passwordFieldErrors.password_confirmation)}`}
               autoComplete="new-password"
               minLength={8}
             />

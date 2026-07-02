@@ -9,6 +9,8 @@ import {
   AdminFormField,
   EmptyState,
   ErrorMessage,
+  FormGlobalError,
+  inputErrorClass,
   PageHeader,
   Pagination,
   scrollToAdminForm,
@@ -21,6 +23,7 @@ import {
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { slugify } from "@/lib/format";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { VehicleCategory } from "@/types/api";
@@ -34,7 +37,8 @@ export default function VehicleCategoriesPage() {
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
   const [editingId, setEditingId] = useState<number | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, clearFieldError } =
+    useAdminFormErrors();
 
   const { data, isPending, isFetching, error } = usePaginatedQuery(
     queryKeys.vehicleCategories(page),
@@ -80,7 +84,7 @@ export default function VehicleCategoriesPage() {
     setIsActive(true);
     setEditingId(null);
     setShowForm(false);
-    setSubmitError(null);
+    resetErrors();
   };
 
   const openCreateForm = () => {
@@ -95,13 +99,13 @@ export default function VehicleCategoriesPage() {
     setDescription(category.description ?? "");
     setIsActive(category.is_active);
     setShowForm(true);
-    setSubmitError(null);
+    resetErrors();
     scrollToAdminForm(formRef);
   };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitError(null);
+    resetErrors();
     try {
       await saveMutation.mutateAsync({
         name,
@@ -111,7 +115,7 @@ export default function VehicleCategoriesPage() {
         ...(editingId ? { id: editingId } : {}),
       });
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : "Save failed.");
+      applySubmissionError(err, "Save failed.");
     }
   };
 
@@ -217,31 +221,41 @@ export default function VehicleCategoriesPage() {
             : "Create a category to organize your fleet."}
         </p>
         <form onSubmit={handleSubmit} className="space-y-4">
-          {submitError ? <ErrorMessage message={submitError} /> : null}
+          <FormGlobalError message={globalError} />
           <div className="grid gap-4 md:grid-cols-2">
-            <AdminFormField label="Category name" hint="Example: Economy, SUV, Luxury.">
+            <AdminFormField label="Category name" hint="Example: Economy, SUV, Luxury." error={fieldErrors.name}>
               <input
                 value={name}
-                onChange={(event) => setName(event.target.value)}
+                onChange={(event) => {
+                  setName(event.target.value);
+                  clearFieldError("name");
+                }}
                 placeholder="Enter category name"
-                className="admin-input"
+                className={`admin-input ${inputErrorClass(fieldErrors.name)}`}
                 required
               />
             </AdminFormField>
 
             {name ? (
-              <AdminFormField label="URL slug" hint="Generated automatically from the category name.">
+              <AdminFormField label="URL slug" hint="Generated automatically from the category name." error={fieldErrors.slug}>
                 <input value={slugPreview} readOnly className="admin-input bg-gray-50 text-gray-500" />
               </AdminFormField>
             ) : null}
           </div>
 
-          <AdminFormField label="Description" hint="Optional. Shown internally to help your team choose the right category.">
+          <AdminFormField
+            label="Description"
+            hint="Optional. Shown internally to help your team choose the right category."
+            error={fieldErrors.description}
+          >
             <textarea
               value={description}
-              onChange={(event) => setDescription(event.target.value)}
+              onChange={(event) => {
+                setDescription(event.target.value);
+                clearFieldError("description");
+              }}
               placeholder="Short description of this category"
-              className="admin-input min-h-24"
+              className={`admin-input min-h-24 ${inputErrorClass(fieldErrors.description)}`}
             />
           </AdminFormField>
 

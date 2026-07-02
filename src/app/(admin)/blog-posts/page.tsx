@@ -11,8 +11,9 @@ import {
   getBlogPosts,
   updateBlogPost,
 } from "@/lib/api/admin";
-import { ApiError, isValidationError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
 import { slugify } from "@/lib/format";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { BlogPost } from "@/types/api";
@@ -21,6 +22,8 @@ import {
   AdminFormField,
   EmptyState,
   ErrorMessage,
+  FormGlobalError,
+  inputErrorClass,
   PageHeader,
   Pagination,
   scrollToAdminForm,
@@ -42,8 +45,9 @@ export default function BlogPostsPage() {
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [loadingEdit, setLoadingEdit] = useState(false);
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, clearFieldError, setGlobalError } =
+    useAdminFormErrors();
 
   const { data, isPending, isFetching, error } = usePaginatedQuery(
     queryKeys.blogPosts(page),
@@ -87,20 +91,20 @@ export default function BlogPostsPage() {
     setEditingId(null);
     setForm(emptyForm);
     setShowForm(false);
-    setSubmitError(null);
+    resetErrors();
   };
 
   const openCreateForm = () => {
     setEditingId(null);
     setForm(emptyForm);
-    setSubmitError(null);
+    resetErrors();
     setShowForm(true);
     scrollToAdminForm(formRef);
   };
 
   const startEdit = async (post: BlogPost) => {
     setLoadingEdit(true);
-    setSubmitError(null);
+    resetErrors();
 
     try {
       const response = await getBlogPost(post.id);
@@ -118,7 +122,7 @@ export default function BlogPostsPage() {
       setShowForm(true);
       scrollToAdminForm(formRef);
     } catch (err) {
-      setSubmitError(err instanceof ApiError ? err.message : "Failed to load article.");
+      setGlobalError(err instanceof ApiError ? err.message : "Failed to load article.");
     } finally {
       setLoadingEdit(false);
     }
@@ -126,7 +130,7 @@ export default function BlogPostsPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitError(null);
+    resetErrors();
 
     try {
       await saveMutation.mutateAsync({
@@ -134,14 +138,7 @@ export default function BlogPostsPage() {
         ...(editingId ? { id: editingId } : {}),
       });
     } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-      setSubmitError(
-        isValidationError(body)
-          ? body.message
-          : err instanceof ApiError
-            ? err.message
-            : "Save failed.",
-      );
+      applySubmissionError(err, "Save failed.");
     }
   };
 
@@ -241,66 +238,73 @@ export default function BlogPostsPage() {
         formRef={formRef}
       >
         <form onSubmit={handleSubmit} className="space-y-4">
-          {submitError ? <ErrorMessage message={submitError} /> : null}
+          <FormGlobalError message={globalError} />
           <div className="grid gap-4 md:grid-cols-2">
-            <AdminFormField label="Title">
+            <AdminFormField label="Title" error={fieldErrors.title}>
               <input
                 placeholder="Article title"
                 value={form.title}
-                onChange={(event) =>
+                onChange={(event) => {
                   setForm((current) => ({
                     ...current,
                     title: event.target.value,
                     slug: editingId ? current.slug : slugify(event.target.value),
-                  }))
-                }
-                className="admin-input"
+                  }));
+                  clearFieldError("title");
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors.title)}`}
                 required
               />
             </AdminFormField>
-            <AdminFormField label="Slug" hint="Used in public URLs.">
+            <AdminFormField label="Slug" hint="Used in public URLs." error={fieldErrors.slug}>
               <input
                 placeholder="mon-article"
                 value={form.slug}
-                onChange={(event) => setForm((current) => ({ ...current, slug: event.target.value }))}
-                className="admin-input"
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, slug: event.target.value }));
+                  clearFieldError("slug");
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors.slug)}`}
                 required
               />
             </AdminFormField>
             <div className="md:col-span-2">
-              <AdminFormField label="Cover image URL">
+              <AdminFormField label="Cover image URL" error={fieldErrors.cover_image}>
               <input
                 placeholder="/cars/rush.png or https://..."
                 value={form.cover_image}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, cover_image: event.target.value }))
-                }
-                className="admin-input"
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, cover_image: event.target.value }));
+                  clearFieldError("cover_image");
+                }}
+                className={`admin-input ${inputErrorClass(fieldErrors.cover_image)}`}
               />
             </AdminFormField>
             </div>
             <div className="md:col-span-2">
-              <AdminFormField label="Excerpt">
+              <AdminFormField label="Excerpt" error={fieldErrors.excerpt}>
               <textarea
                 placeholder="Short summary shown on cards"
                 value={form.excerpt}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, excerpt: event.target.value }))
-                }
-                className="admin-input min-h-[90px]"
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, excerpt: event.target.value }));
+                  clearFieldError("excerpt");
+                }}
+                className={`admin-input min-h-[90px] ${inputErrorClass(fieldErrors.excerpt)}`}
                 required
               />
             </AdminFormField>
             </div>
             <div className="md:col-span-2">
-              <AdminFormField label="Content">
+              <AdminFormField label="Content" error={fieldErrors.content}>
               <textarea
                 placeholder="Full article text. Separate paragraphs with a blank line."
                 value={form.content}
-                onChange={(event) =>
-                  setForm((current) => ({ ...current, content: event.target.value }))
-                }
-                className="admin-input min-h-[220px]"
+                onChange={(event) => {
+                  setForm((current) => ({ ...current, content: event.target.value }));
+                  clearFieldError("content");
+                }}
+                className={`admin-input min-h-[220px] ${inputErrorClass(fieldErrors.content)}`}
                 required
               />
             </AdminFormField>

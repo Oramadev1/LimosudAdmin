@@ -11,14 +11,15 @@ import {
   updateVehicle,
   uploadVehiclePhotos,
 } from "@/lib/api/admin";
-import { ApiError, isValidationError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
 import { slugify } from "@/lib/format";
+import { parseFormSubmissionError, useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { storageUrl } from "@/lib/images";
 import { useSubmitLock } from "@/lib/use-submit-lock";
 import { useAdminQuery, useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import type { CreateVehiclePayload } from "@/types/api";
-import { AdminFormField, ErrorMessage } from "@/components/ui/AdminUi";
+import { AdminFormField, ErrorMessage, FormGlobalError } from "@/components/ui/AdminUi";
 import { AdminImageThumb } from "@/components/ui/AdminImageThumb";
 import { VehiclePhotoManager } from "@/components/vehicles/VehiclePhotoManager";
 
@@ -56,8 +57,8 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
   const [form, setForm] = useState(defaultForm);
   const [pendingPhotos, setPendingPhotos] = useState<File[]>([]);
   const [pendingPreviews, setPendingPreviews] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, setFieldErrors } =
+    useAdminFormErrors();
   const { runOnce, busy: saving } = useSubmitLock();
 
   const { data: lookups, error: lookupsError } = useLookupsQuery();
@@ -163,11 +164,9 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
 
     setFieldErrors(mapped);
     if (Object.keys(mapped).length > 0) {
-      setError("Complete the required fields before continuing.");
       return false;
     }
 
-    setError(null);
     return true;
   };
 
@@ -183,8 +182,7 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
     }
 
     await runOnce(async () => {
-      setError(null);
-      setFieldErrors({});
+      resetErrors();
 
       try {
         const payload = buildPayload();
@@ -207,17 +205,10 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
           router.push("/vehicles");
         }
       } catch (err) {
-        const body = err instanceof ApiError ? err.body : err;
-        if (isValidationError(body)) {
-          const mapped: Record<string, string> = {};
-          for (const [key, messages] of Object.entries(body.errors)) {
-            mapped[key] = messages[0];
-          }
-          setFieldErrors(mapped);
+        const parsed = parseFormSubmissionError(err, "Save failed.");
+        applySubmissionError(err, "Save failed.");
+        if (Object.keys(parsed.fieldErrors).length > 0) {
           setStep(1);
-          setError("Please correct the validation errors on step 1.");
-        } else {
-          setError(err instanceof ApiError ? err.message : "Save failed.");
         }
       }
     });
@@ -276,7 +267,7 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
 
       <form onSubmit={handleSubmit} className="admin-card space-y-6 p-6">
         {loadError ? <ErrorMessage message={loadError} /> : null}
-        {error ? <ErrorMessage message={error} /> : null}
+        <FormGlobalError message={globalError} />
 
         {step === 1 ? (
           <>

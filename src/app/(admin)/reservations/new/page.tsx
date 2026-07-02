@@ -14,17 +14,23 @@ import {
   getVehicleAvailabilitySchedule,
   getVehicles,
 } from "@/lib/api/admin";
-import { ApiError, isValidationError } from "@/lib/api/client";
 import { toApiDatetime } from "@/lib/format";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { useAdminQuery } from "@/lib/query/hooks";
-import { ErrorMessage, PageHeader } from "@/components/ui/AdminUi";
+import {
+  AdminFormField,
+  FormGlobalError,
+  inputErrorClass,
+  PageHeader,
+} from "@/components/ui/AdminUi";
 import type { ReservationAvailabilityResult } from "@/types/api";
 
 export default function NewReservationPage() {
   const router = useRouter();
-  const [error, setError] = useState<string | null>(null);
   const [availability, setAvailability] = useState<ReservationAvailabilityResult | null>(null);
   const [checkingAvailability, setCheckingAvailability] = useState(false);
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, clearFieldError, setGlobalError } =
+    useAdminFormErrors();
   const [form, setForm] = useState({
     customer_id: "",
     vehicle_id: "",
@@ -86,7 +92,7 @@ export default function NewReservationPage() {
     event.preventDefault();
 
     await runOnce(async () => {
-      setError(null);
+      resetErrors();
 
       const startDatetime = toApiDatetime(form.start_datetime);
       const endDatetime = toApiDatetime(form.end_datetime);
@@ -102,7 +108,7 @@ export default function NewReservationPage() {
 
         if (!availabilityResult.available) {
           setAvailability(availabilityResult);
-          setError("The selected period is not available. Choose open dates on the calendar.");
+          setGlobalError("The selected period is not available. Choose open dates on the calendar.");
           return;
         }
 
@@ -117,10 +123,7 @@ export default function NewReservationPage() {
           admin_notes: form.admin_notes || null,
         });
       } catch (err) {
-        const body = err instanceof ApiError ? err.body : err;
-        setError(
-          isValidationError(body) ? body.message : err instanceof ApiError ? err.message : "Create failed.",
-        );
+        applySubmissionError(err, "Create failed.");
       }
     });
   };
@@ -136,62 +139,80 @@ export default function NewReservationPage() {
       />
 
       <form onSubmit={handleSubmit} className="admin-card space-y-4 p-6">
-        {error ? <ErrorMessage message={error} /> : null}
+        <FormGlobalError message={globalError} />
 
         <div className="grid gap-4 md:grid-cols-2">
-          <select
-            value={form.customer_id}
-            onChange={(e) => setForm((c) => ({ ...c, customer_id: e.target.value }))}
-            className="admin-input"
-            required
-          >
-            <option value="">Select customer</option>
-            {customers?.data.map((c) => (
-              <option key={c.id} value={c.id}>{c.full_name}</option>
-            ))}
-          </select>
-          <select
-            value={form.vehicle_id}
-            onChange={(e) => {
-              setForm((c) => ({
-                ...c,
-                vehicle_id: e.target.value,
-                start_datetime: "",
-                end_datetime: "",
-              }));
-              setAvailability(null);
-              setError(null);
-            }}
-            className="admin-input"
-            required
-          >
-            <option value="">Select vehicle</option>
-            {vehicles?.data.map((v) => (
-              <option key={v.id} value={v.id}>{v.name}</option>
-            ))}
-          </select>
-          <select
-            value={form.pickup_location_id}
-            onChange={(e) => setForm((c) => ({ ...c, pickup_location_id: e.target.value }))}
-            className="admin-input"
-            required
-          >
-            <option value="">Pickup location</option>
-            {locations?.data.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
-          <select
-            value={form.dropoff_location_id}
-            onChange={(e) => setForm((c) => ({ ...c, dropoff_location_id: e.target.value }))}
-            className="admin-input"
-            required
-          >
-            <option value="">Drop-off location</option>
-            {locations?.data.map((l) => (
-              <option key={l.id} value={l.id}>{l.name}</option>
-            ))}
-          </select>
+          <AdminFormField error={fieldErrors.customer_id}>
+            <select
+              value={form.customer_id}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, customer_id: e.target.value }));
+                clearFieldError("customer_id");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.customer_id)}`}
+              required
+            >
+              <option value="">Select customer</option>
+              {customers?.data.map((c) => (
+                <option key={c.id} value={c.id}>{c.full_name}</option>
+              ))}
+            </select>
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.vehicle_id}>
+            <select
+              value={form.vehicle_id}
+              onChange={(e) => {
+                setForm((c) => ({
+                  ...c,
+                  vehicle_id: e.target.value,
+                  start_datetime: "",
+                  end_datetime: "",
+                }));
+                setAvailability(null);
+                clearFieldError("vehicle_id");
+                resetErrors();
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.vehicle_id)}`}
+              required
+            >
+              <option value="">Select vehicle</option>
+              {vehicles?.data.map((v) => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.pickup_location_id}>
+            <select
+              value={form.pickup_location_id}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, pickup_location_id: e.target.value }));
+                clearFieldError("pickup_location_id");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.pickup_location_id)}`}
+              required
+            >
+              <option value="">Pickup location</option>
+              {locations?.data.map((l) => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.dropoff_location_id}>
+            <select
+              value={form.dropoff_location_id}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, dropoff_location_id: e.target.value }));
+                clearFieldError("dropoff_location_id");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.dropoff_location_id)}`}
+              required
+            >
+              <option value="">Drop-off location</option>
+              {locations?.data.map((l) => (
+                <option key={l.id} value={l.id}>{l.name}</option>
+              ))}
+            </select>
+          </AdminFormField>
 
           {vehicleId ? (
             <RentalPeriodFields
@@ -201,11 +222,13 @@ export default function NewReservationPage() {
               vehicleRentable={vehicleRentable}
               onStartChange={(start_datetime) => {
                 setForm((current) => ({ ...current, start_datetime }));
-                setError(null);
+                clearFieldError("start_datetime");
+                setGlobalError(null);
               }}
               onEndChange={(end_datetime) => {
                 setForm((current) => ({ ...current, end_datetime }));
-                setError(null);
+                clearFieldError("end_datetime");
+                setGlobalError(null);
               }}
             />
           ) : (
@@ -229,18 +252,28 @@ export default function NewReservationPage() {
           </div>
         ) : null}
 
-        <textarea
-          placeholder="Customer notes"
-          value={form.customer_notes}
-          onChange={(e) => setForm((c) => ({ ...c, customer_notes: e.target.value }))}
-          className="admin-input min-h-20"
-        />
-        <textarea
-          placeholder="Admin notes"
-          value={form.admin_notes}
-          onChange={(e) => setForm((c) => ({ ...c, admin_notes: e.target.value }))}
-          className="admin-input min-h-20"
-        />
+        <AdminFormField error={fieldErrors.customer_notes}>
+          <textarea
+            placeholder="Customer notes"
+            value={form.customer_notes}
+            onChange={(e) => {
+              setForm((c) => ({ ...c, customer_notes: e.target.value }));
+              clearFieldError("customer_notes");
+            }}
+            className={`admin-input min-h-20 ${inputErrorClass(fieldErrors.customer_notes)}`}
+          />
+        </AdminFormField>
+        <AdminFormField error={fieldErrors.admin_notes}>
+          <textarea
+            placeholder="Admin notes"
+            value={form.admin_notes}
+            onChange={(e) => {
+              setForm((c) => ({ ...c, admin_notes: e.target.value }));
+              clearFieldError("admin_notes");
+            }}
+            className={`admin-input min-h-20 ${inputErrorClass(fieldErrors.admin_notes)}`}
+          />
+        </AdminFormField>
 
         <div className="flex flex-wrap gap-3">
           <button type="submit" disabled={busy || createMutation.isPending} className="admin-btn-primary">

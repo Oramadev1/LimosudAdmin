@@ -14,7 +14,7 @@ import {
   getPendingAlerts,
   getVehicles,
 } from "@/lib/api/admin";
-import { ApiError, isValidationError } from "@/lib/api/client";
+import { ApiError } from "@/lib/api/client";
 import {
   getAlertContactMessageId,
   getAlertReservationId,
@@ -22,12 +22,16 @@ import {
   getAlertTypeBadgeClass,
 } from "@/lib/alert-styles";
 import { formatDateTime } from "@/lib/format";
+import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { useAdminQuery, useLookupsQuery, usePaginatedQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
 import {
   AdminCollapsibleFormCard,
+  AdminFormField,
   EmptyState,
   ErrorMessage,
+  FormGlobalError,
+  inputErrorClass,
   PageHeader,
   Pagination,
   scrollToAdminForm,
@@ -51,8 +55,9 @@ export default function AlertsPage() {
   const [page, setPage] = useState(1);
   const [showForm, setShowForm] = useState(false);
   const [generateMessage, setGenerateMessage] = useState<string | null>(null);
-  const [submitError, setSubmitError] = useState<string | null>(null);
   const [form, setForm] = useState(emptyForm);
+  const { globalError, fieldErrors, resetErrors, applySubmissionError, clearFieldError } =
+    useAdminFormErrors();
 
   const { data: vehicles } = useAdminQuery({ queryKey: queryKeys.vehicles(1), queryFn: () => getVehicles(1) });
 
@@ -102,12 +107,12 @@ export default function AlertsPage() {
   const resetForm = () => {
     setForm(emptyForm);
     setShowForm(false);
-    setSubmitError(null);
+    resetErrors();
   };
 
   const openCreateForm = () => {
     setForm(emptyForm);
-    setSubmitError(null);
+    resetErrors();
     setShowForm(true);
     scrollToAdminForm(formRef);
   };
@@ -128,7 +133,7 @@ export default function AlertsPage() {
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
-    setSubmitError(null);
+    resetErrors();
     try {
       await createMutation.mutateAsync({
         vehicle_id: form.vehicle_id ? Number(form.vehicle_id) : null,
@@ -138,10 +143,7 @@ export default function AlertsPage() {
         due_date: form.due_date || null,
       });
     } catch (err) {
-      const body = err instanceof ApiError ? err.body : err;
-      setSubmitError(
-        isValidationError(body) ? body.message : err instanceof ApiError ? err.message : "Create failed.",
-      );
+      applySubmissionError(err, "Create failed.");
     }
   };
 
@@ -291,21 +293,70 @@ export default function AlertsPage() {
 
       <AdminCollapsibleFormCard open={showForm} title="Create alert" formRef={formRef}>
         <form onSubmit={handleSubmit} className="grid gap-4 md:grid-cols-2">
-          {submitError ? <div className="md:col-span-2"><ErrorMessage message={submitError} /></div> : null}
-          <select value={form.vehicle_id} onChange={(e) => setForm((c) => ({ ...c, vehicle_id: e.target.value }))} className="admin-input">
-            <option value="">No vehicle</option>
-            {vehicles?.data.map((v) => (
-              <option key={v.id} value={v.id}>{v.name}</option>
-            ))}
-          </select>
-          <select value={form.alert_type_slug} onChange={(e) => setForm((c) => ({ ...c, alert_type_slug: e.target.value }))} className="admin-input">
-            {lookups?.alert_types.map((item) => (
-              <option key={item.slug} value={item.slug}>{item.name}</option>
-            ))}
-          </select>
-          <input placeholder="Title" value={form.title} onChange={(e) => setForm((c) => ({ ...c, title: e.target.value }))} className="admin-input md:col-span-2" required />
-          <textarea placeholder="Message" value={form.message} onChange={(e) => setForm((c) => ({ ...c, message: e.target.value }))} className="admin-input min-h-20 md:col-span-2" />
-          <input type="date" value={form.due_date} onChange={(e) => setForm((c) => ({ ...c, due_date: e.target.value }))} className="admin-input" />
+          <FormGlobalError message={globalError} />
+          <AdminFormField error={fieldErrors.vehicle_id}>
+            <select
+              value={form.vehicle_id}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, vehicle_id: e.target.value }));
+                clearFieldError("vehicle_id");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.vehicle_id)}`}
+            >
+              <option value="">No vehicle</option>
+              {vehicles?.data.map((v) => (
+                <option key={v.id} value={v.id}>{v.name}</option>
+              ))}
+            </select>
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.alert_type_slug}>
+            <select
+              value={form.alert_type_slug}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, alert_type_slug: e.target.value }));
+                clearFieldError("alert_type_slug");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.alert_type_slug)}`}
+            >
+              {lookups?.alert_types.map((item) => (
+                <option key={item.slug} value={item.slug}>{item.name}</option>
+              ))}
+            </select>
+          </AdminFormField>
+          <AdminFormField className="md:col-span-2" error={fieldErrors.title}>
+            <input
+              placeholder="Title"
+              value={form.title}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, title: e.target.value }));
+                clearFieldError("title");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.title)}`}
+              required
+            />
+          </AdminFormField>
+          <AdminFormField className="md:col-span-2" error={fieldErrors.message}>
+            <textarea
+              placeholder="Message"
+              value={form.message}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, message: e.target.value }));
+                clearFieldError("message");
+              }}
+              className={`admin-input min-h-20 ${inputErrorClass(fieldErrors.message)}`}
+            />
+          </AdminFormField>
+          <AdminFormField error={fieldErrors.due_date}>
+            <input
+              type="date"
+              value={form.due_date}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, due_date: e.target.value }));
+                clearFieldError("due_date");
+              }}
+              className={`admin-input ${inputErrorClass(fieldErrors.due_date)}`}
+            />
+          </AdminFormField>
           <div className="flex gap-3">
             <button type="submit" disabled={createMutation.isPending} className="admin-btn-primary">
               {createMutation.isPending ? "Creating..." : "Create alert"}

@@ -118,19 +118,40 @@ export function EmptyState({
 export function AdminFormField({
   label,
   hint,
+  error,
+  className = "",
   children,
 }: {
-  label: string;
+  label?: string;
   hint?: string;
+  error?: string;
+  className?: string;
   children: ReactNode;
 }) {
   return (
-    <div>
-      <label className="mb-1 block text-sm font-medium text-gray-700">{label}</label>
+    <div className={className}>
+      {label ? <label className="mb-1 block text-sm font-medium text-gray-700">{label}</label> : null}
       {children}
-      {hint ? <p className="mt-1 text-xs text-gray-400">{hint}</p> : null}
+      {error ? <p className="mt-1 text-xs text-red-600">{error}</p> : null}
+      {!error && hint ? <p className="mt-1 text-xs text-gray-400">{hint}</p> : null}
     </div>
   );
+}
+
+export function FormGlobalError({ message }: { message: string | null }) {
+  if (!message) {
+    return null;
+  }
+
+  return (
+    <div className="md:col-span-2">
+      <ErrorMessage message={message} />
+    </div>
+  );
+}
+
+export function inputErrorClass(error?: string) {
+  return error ? "border-red-400" : "";
 }
 
 export function ErrorMessage({ message }: { message: string }) {
