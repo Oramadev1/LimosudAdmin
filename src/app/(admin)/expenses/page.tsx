@@ -25,6 +25,7 @@ import {
   Pagination,
   scrollToAdminForm,
 } from "@/components/ui/AdminUi";
+import { AdminFileUpload } from "@/components/ui/AdminFileUpload";
 
 const emptyForm = {
   vehicle_id: "",
@@ -42,6 +43,7 @@ export default function ExpensesPage() {
   const [showForm, setShowForm] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingHasInvoice, setEditingHasInvoice] = useState(false);
   const [invoiceFile, setInvoiceFile] = useState<File | null>(null);
   const [form, setForm] = useState(emptyForm);
 
@@ -82,6 +84,7 @@ export default function ExpensesPage() {
   const resetForm = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setEditingHasInvoice(false);
     setInvoiceFile(null);
     setShowForm(false);
     setSubmitError(null);
@@ -90,6 +93,7 @@ export default function ExpensesPage() {
   const openCreateForm = () => {
     setEditingId(null);
     setForm(emptyForm);
+    setEditingHasInvoice(false);
     setInvoiceFile(null);
     setSubmitError(null);
     setShowForm(true);
@@ -105,6 +109,7 @@ export default function ExpensesPage() {
       expense_date: expense.expense_date.slice(0, 10),
       description: expense.description ?? "",
     });
+    setEditingHasInvoice(expense.has_invoice);
     setInvoiceFile(null);
     setSubmitError(null);
     setShowForm(true);
@@ -240,7 +245,20 @@ export default function ExpensesPage() {
           <input type="number" placeholder="Amount" value={form.amount} onChange={(e) => setForm((c) => ({ ...c, amount: e.target.value }))} className="admin-input" required />
           <input type="date" value={form.expense_date} onChange={(e) => setForm((c) => ({ ...c, expense_date: e.target.value }))} className="admin-input" required />
           <input placeholder="Description" value={form.description} onChange={(e) => setForm((c) => ({ ...c, description: e.target.value }))} className="admin-input md:col-span-2" />
-          <input type="file" accept=".pdf,.jpg,.jpeg,.png,.webp" onChange={(e) => setInvoiceFile(e.target.files?.[0] ?? null)} className="md:col-span-2 text-sm" />
+          <AdminFileUpload
+            className="md:col-span-2"
+            label="Invoice"
+            hint={
+              editingId && editingHasInvoice
+                ? "An invoice is already attached. Upload a new file to replace it."
+                : "Optional. PDF or image (JPG, PNG, WEBP)."
+            }
+            accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"
+            file={invoiceFile}
+            onFileChange={setInvoiceFile}
+            emptyTitle="Upload invoice"
+            emptyHint="PDF, JPG, PNG, or WEBP"
+          />
           <div className="md:col-span-2 flex gap-3">
             <button type="submit" disabled={saveMutation.isPending} className="admin-btn-primary">
               {saveMutation.isPending ? "Saving..." : editingId ? "Update" : "Create"}

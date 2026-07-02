@@ -20,24 +20,27 @@ export function AdminShell({ children }: { children: React.ReactNode }) {
       ) : null}
 
       <div
-        className={`fixed inset-y-0 left-0 z-40 h-screen w-[260px] bg-white transition-transform duration-300 lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-40 h-screen w-[272px] transition-transform duration-300 lg:translate-x-0 ${
           sidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <AdminSidebar onClose={() => setSidebarOpen(false)} />
       </div>
 
-      <div className="flex min-h-screen min-w-0 flex-col lg:pl-[260px]">
-        <header className="sticky top-0 z-20 flex items-center gap-4 border-b border-gray-100 bg-white px-4 py-3 lg:hidden">
+      <div className="flex min-h-screen min-w-0 flex-col lg:pl-[272px]">
+        <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-gray-200/80 bg-white/90 px-4 py-3 backdrop-blur lg:hidden">
           <button
             type="button"
             onClick={() => setSidebarOpen(true)}
-            className="text-gray-500"
+            className="rounded-lg p-2 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
             aria-label="Open sidebar"
           >
-            <Menu size={24} />
+            <Menu size={22} />
           </button>
-          <span className="text-lg font-bold text-[#3563E9]">{siteConfig.brand}</span>
+          <div className="min-w-0">
+            <p className="truncate text-sm font-semibold text-gray-900">{siteConfig.brand}</p>
+            <p className="text-xs text-gray-400">Admin panel</p>
+          </div>
         </header>
 
         <main className="min-w-0 flex-1 p-4 sm:p-6">{children}</main>
