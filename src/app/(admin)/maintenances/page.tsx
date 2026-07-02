@@ -145,6 +145,12 @@ export default function MaintenancesPage() {
       localErrors.maintenance_date = "Please enter the maintenance date.";
     }
 
+    if (!form.cost.trim()) {
+      localErrors.cost = "Please enter the maintenance cost.";
+    } else if (!Number.isFinite(Number(form.cost)) || Number(form.cost) <= 0) {
+      localErrors.cost = "The maintenance cost must be greater than zero.";
+    }
+
     if (Object.keys(localErrors).length > 0) {
       setFieldErrors(localErrors);
       setSubmitError("Please fill in the required fields highlighted below.");
@@ -158,7 +164,7 @@ export default function MaintenancesPage() {
         maintenance_date: form.maintenance_date,
         next_maintenance_date: form.next_maintenance_date || null,
         mileage: form.mileage ? Number(form.mileage) : null,
-        ...(form.cost !== "" ? { cost: Number(form.cost) } : {}),
+        cost: Number(form.cost),
         garage_name: form.garage_name || null,
         notes: form.notes || null,
         ...(editingId ? { id: editingId } : {}),
@@ -365,10 +371,21 @@ export default function MaintenancesPage() {
           </div>
           <div>
             <input
-              placeholder="Cost"
+              type="number"
+              min="0.01"
+              step="0.01"
+              placeholder="Cost (MAD) *"
               value={form.cost}
-              onChange={(e) => setForm((c) => ({ ...c, cost: e.target.value }))}
+              onChange={(e) => {
+                setForm((c) => ({ ...c, cost: e.target.value }));
+                setFieldErrors((current) => {
+                  const next = { ...current };
+                  delete next.cost;
+                  return next;
+                });
+              }}
               className={`admin-input ${fieldErrors.cost ? "border-red-400" : ""}`}
+              required
             />
             {fieldErrors.cost ? <p className="mt-1 text-xs text-red-600">{fieldErrors.cost}</p> : null}
           </div>

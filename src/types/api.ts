@@ -483,7 +483,7 @@ export interface CreateMaintenancePayload {
   maintenance_date: string;
   next_maintenance_date?: string | null;
   mileage?: number | null;
-  cost?: number | null;
+  cost: number;
   garage_name?: string | null;
   notes?: string | null;
   vehicle_status_slug?: string | null;
