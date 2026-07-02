@@ -358,7 +358,7 @@ export function getContractByReservation(reservationId: number) {
 export function generateContract(reservationId: number, payload?: GenerateContractPayload) {
   return withAuth<{ data: Contract }>(`/admin/reservations/${reservationId}/contract/generate`, {
     method: "POST",
-    body: JSON.stringify(payload ?? {}),
+    ...json(payload ?? {}),
   });
 }
 
