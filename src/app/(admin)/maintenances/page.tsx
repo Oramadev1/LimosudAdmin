@@ -158,7 +158,7 @@ export default function MaintenancesPage() {
         maintenance_date: form.maintenance_date,
         next_maintenance_date: form.next_maintenance_date || null,
         mileage: form.mileage ? Number(form.mileage) : null,
-        cost: form.cost ? Number(form.cost) : null,
+        ...(form.cost !== "" ? { cost: Number(form.cost) } : {}),
         garage_name: form.garage_name || null,
         notes: form.notes || null,
         ...(editingId ? { id: editingId } : {}),
