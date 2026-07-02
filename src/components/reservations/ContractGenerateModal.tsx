@@ -316,10 +316,6 @@ export function ContractGenerateModal({
                     label="Payment status"
                     value={form.auto.payment.payment_status ?? "—"}
                   />
-                  <ReadOnlyField
-                    label="Scheduled payment date"
-                    value={details.payment.scheduled_payment_date || "—"}
-                  />
                 </div>
               </Section>
 
