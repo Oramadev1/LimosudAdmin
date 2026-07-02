@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import Link from "next/link";
+import { useEffect, useMemo, useState } from "react";
 
 import { getContractForm, generateContract } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
@@ -13,6 +14,42 @@ type ContractGenerateModalProps = {
   onClose: () => void;
   onGenerated: () => void;
 };
+
+const MISSING_FIELD_LABELS: Record<string, string> = {
+  "customer.passport_or_cin": "Passport / CIN",
+  "customer.address": "Address",
+  "customer.driving_license_number": "Driving license number",
+  "customer.license_issued_at": "License issued date",
+};
+
+function resolveMissingFields(
+  auto: ContractFormData["auto"],
+  details: ContractDetailsPayload,
+): string[] {
+  const missing: string[] = [];
+
+  if (!details.customer.passport_or_cin?.trim() && !auto.customer.passport_or_cin?.trim()) {
+    missing.push("customer.passport_or_cin");
+  }
+
+  if (!details.customer.address?.trim()) {
+    missing.push("customer.address");
+  }
+
+  if (!details.customer.driving_license_number?.trim() && !auto.customer.driving_license_number?.trim()) {
+    missing.push("customer.driving_license_number");
+  }
+
+  if (!details.customer.license_issued_at?.trim()) {
+    missing.push("customer.license_issued_at");
+  }
+
+  return missing;
+}
+
+function missingInputClass(isMissing: boolean) {
+  return isMissing ? "admin-input border-amber-400 ring-1 ring-amber-200" : "admin-input";
+}
 
 const EQUIPMENT_FIELDS: Array<{ key: keyof ContractDetailsPayload["equipment"]; label: string }> = [
   { key: "jack", label: "Jack (Cric)" },
@@ -106,6 +143,14 @@ export function ContractGenerateModal({
     setDetails((current) => (current ? updater(current) : current));
   };
 
+  const missingFields = useMemo(() => {
+    if (!form || !details) {
+      return [];
+    }
+
+    return resolveMissingFields(form.auto, details);
+  }, [form, details]);
+
   const handleSubmit = async () => {
     if (!details) return;
 
@@ -142,9 +187,17 @@ export function ContractGenerateModal({
             <p className="text-sm text-gray-500">Loading contract form...</p>
           ) : (
             <div className="space-y-4">
-              {form.missing_fields.length > 0 ? (
-                <div className="rounded-[8px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
-                  Some fields are still empty: {form.missing_fields.join(", ")}. You can fill them below before generating.
+              {missingFields.length > 0 ? (
+                <div className="rounded-[8px] border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  <p className="font-medium">Complete these customer details for a full contract PDF:</p>
+                  <ul className="mt-2 list-disc space-y-1 pl-5">
+                    {missingFields.map((field) => (
+                      <li key={field}>{MISSING_FIELD_LABELS[field] ?? field}</li>
+                    ))}
+                  </ul>
+                  <p className="mt-2 text-xs text-amber-800">
+                    Fill the highlighted fields below. They will be saved to the customer profile when you generate.
+                  </p>
                 </div>
               ) : null}
 
@@ -166,15 +219,39 @@ export function ContractGenerateModal({
                 </div>
               </Section>
 
-              <Section title="Customer (auto-filled + missing fields)">
+              <Section title="Customer details">
                 <div className="mb-4 grid gap-3 md:grid-cols-2">
                   <input className="admin-input bg-gray-50" readOnly value={form.auto.customer.full_name} />
                   <input className="admin-input bg-gray-50" readOnly value={form.auto.customer.phone} />
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
+                  <AdminFormField label="Passport / CIN">
+                    <input
+                      className={missingInputClass(missingFields.includes("customer.passport_or_cin"))}
+                      value={details.customer.passport_or_cin ?? ""}
+                      onChange={(e) =>
+                        updateDetails((c) => ({
+                          ...c,
+                          customer: { ...c.customer, passport_or_cin: e.target.value },
+                        }))
+                      }
+                    />
+                  </AdminFormField>
+                  <AdminFormField label="Driving license number">
+                    <input
+                      className={missingInputClass(missingFields.includes("customer.driving_license_number"))}
+                      value={details.customer.driving_license_number ?? ""}
+                      onChange={(e) =>
+                        updateDetails((c) => ({
+                          ...c,
+                          customer: { ...c.customer, driving_license_number: e.target.value },
+                        }))
+                      }
+                    />
+                  </AdminFormField>
                   <AdminFormField label="Address">
                     <input
-                      className="admin-input"
+                      className={missingInputClass(missingFields.includes("customer.address"))}
                       value={details.customer.address ?? ""}
                       onChange={(e) =>
                         updateDetails((c) => ({
@@ -199,7 +276,7 @@ export function ContractGenerateModal({
                   <AdminFormField label="License issued at">
                     <input
                       type="date"
-                      className="admin-input"
+                      className={missingInputClass(missingFields.includes("customer.license_issued_at"))}
                       value={details.customer.license_issued_at ?? ""}
                       onChange={(e) =>
                         updateDetails((c) => ({
@@ -248,6 +325,15 @@ export function ContractGenerateModal({
                     />
                   </AdminFormField>
                 </div>
+                <p className="mt-3 text-xs text-gray-500">
+                  Need more profile data?{" "}
+                  <Link
+                    href={`/customers/${form.auto.customer.id}/edit?returnTo=/reservations/${reservationId}`}
+                    className="font-semibold text-[#3563E9] hover:underline"
+                  >
+                    Edit customer profile
+                  </Link>
+                </p>
               </Section>
 
               <Section title="Vehicle details">

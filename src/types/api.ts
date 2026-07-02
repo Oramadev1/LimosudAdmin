@@ -534,6 +534,8 @@ export type ContractInsuranceType = "basic" | "premium" | "full_coverage";
 
 export interface ContractDetailsPayload {
   customer: {
+    passport_or_cin: string | null;
+    driving_license_number: string | null;
     address: string | null;
     foreign_address: string | null;
     license_issued_at: string | null;
@@ -606,6 +608,7 @@ export interface ContractFormData {
     contract_series: string;
     generation_date: string;
     customer: {
+      id: number;
       full_name: string;
       nationality: string;
       phone: string;
