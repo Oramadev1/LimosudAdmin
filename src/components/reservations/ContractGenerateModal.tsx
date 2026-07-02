@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 import { getContractForm, generateContract } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
@@ -135,21 +135,12 @@ export function ContractGenerateModal({
     };
   }, [open, reservationId]);
 
-  if (!open) {
-    return null;
-  }
+  const missingFields =
+    form && details ? resolveMissingFields(form.auto, details) : [];
 
   const updateDetails = (updater: (current: ContractDetailsPayload) => ContractDetailsPayload) => {
     setDetails((current) => (current ? updater(current) : current));
   };
-
-  const missingFields = useMemo(() => {
-    if (!form || !details) {
-      return [];
-    }
-
-    return resolveMissingFields(form.auto, details);
-  }, [form, details]);
 
   const handleSubmit = async () => {
     if (!details) return;
@@ -169,6 +160,10 @@ export function ContractGenerateModal({
       setSubmitting(false);
     }
   };
+
+  if (!open) {
+    return null;
+  }
 
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-4 sm:items-center">
