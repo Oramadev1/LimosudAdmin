@@ -111,8 +111,6 @@ export interface Vehicle {
   seats: number;
   doors: number;
   daily_price: string;
-  weekly_price: string | null;
-  monthly_price: string | null;
   deposit_amount: string;
   description: string | null;
   is_featured: boolean;
@@ -157,8 +155,6 @@ export interface CreateVehiclePayload {
   seats: number;
   doors: number;
   daily_price: number;
-  weekly_price?: number | null;
-  monthly_price?: number | null;
   deposit_amount: number;
   description?: string | null;
   current_mileage_updated_at?: string | null;
@@ -627,8 +623,6 @@ export interface ContractFormData {
       transmission: string | null;
       fuel_type: string | null;
       daily_price: number;
-      weekly_price: number;
-      monthly_price: number;
     };
     rental: {
       pickup_location: string | null;

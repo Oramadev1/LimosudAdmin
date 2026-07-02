@@ -41,8 +41,6 @@ const defaultForm = {
   seats: "5",
   doors: "4",
   daily_price: "",
-  weekly_price: "",
-  monthly_price: "",
   deposit_amount: "",
   description: "",
   is_featured: false,
@@ -101,8 +99,6 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
       seats: String(data.seats),
       doors: String(data.doors),
       daily_price: data.daily_price,
-      weekly_price: data.weekly_price ?? "",
-      monthly_price: data.monthly_price ?? "",
       deposit_amount: data.deposit_amount,
       description: data.description ?? "",
       is_featured: data.is_featured,
@@ -141,8 +137,6 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
     seats: Number(form.seats),
     doors: Number(form.doors),
     daily_price: Number(form.daily_price),
-    weekly_price: form.weekly_price ? Number(form.weekly_price) : null,
-    monthly_price: form.monthly_price ? Number(form.monthly_price) : null,
     deposit_amount: Number(form.deposit_amount),
     description: form.description || null,
     is_featured: form.is_featured,
@@ -387,8 +381,6 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
                 ["seats", "Seats"],
                 ["doors", "Doors"],
                 ["daily_price", "Daily price"],
-                ["weekly_price", "Weekly price"],
-                ["monthly_price", "Monthly price"],
                 ["deposit_amount", "Deposit"],
               ].map(([key, label]) => (
                 <AdminFormField key={key} label={label}>
@@ -397,7 +389,7 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
                     value={form[key as keyof typeof form] as string}
                     onChange={(event) => setField(key as keyof typeof form, event.target.value)}
                     className="admin-input"
-                    required={!["weekly_price", "monthly_price"].includes(key)}
+                    required
                   />
                   {fieldErrors[key] ? (
                     <p className="mt-1 text-xs text-red-600">{fieldErrors[key]}</p>
