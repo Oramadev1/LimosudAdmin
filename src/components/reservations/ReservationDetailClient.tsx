@@ -152,6 +152,7 @@ export function ReservationDetailClient({ id }: { id: number }) {
 
   const handleContractGenerated = async () => {
     await refetchContract();
+    invalidate();
     setContractMessage("Contract generated successfully.");
   };
 

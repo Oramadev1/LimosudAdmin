@@ -210,6 +210,8 @@ export function ContractGenerateModal({
   const baseTotal = form?.auto.payment.total_price ?? 0;
   const dailyPrice = form?.auto.vehicle.daily_price ?? 0;
   const extensionDays = details ? parseExtensionDays(details.rental.extension) : 0;
+  const effectiveRentalDays =
+    (details?.rental.total_days ?? 0) + (extensionDays >= 1 ? extensionDays : 0);
 
   const updateExtensionTotal = (
     extensionValue: string,
@@ -380,7 +382,11 @@ export function ContractGenerateModal({
                   />
                   <ReadOnlyField
                     label="Duration"
-                    value={`${details.rental.total_days} day(s)`}
+                    value={
+                      extensionDays >= 1
+                        ? `${effectiveRentalDays} day(s) (${details.rental.total_days} base + ${extensionDays} extension)`
+                        : `${details.rental.total_days} day(s)`
+                    }
                   />
                 </div>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
