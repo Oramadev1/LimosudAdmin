@@ -39,10 +39,3 @@ export function getAlertReservationId(alert: {
 }): number | null {
   return alert.reservation_id ?? alert.reservation?.id ?? null;
 }
-
-export function getAlertContactMessageId(alert: {
-  contact_message_id?: number | null;
-  contact_message?: { id: number } | null;
-}): number | null {
-  return alert.contact_message_id ?? alert.contact_message?.id ?? null;
-}

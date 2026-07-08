@@ -8,7 +8,6 @@ import {
   Car,
   CreditCard,
   LogOut,
-  Mail,
   LayoutDashboard,
   MapPin,
   Receipt,
@@ -44,7 +43,6 @@ const navSections = [
     title: "Operations",
     items: [
       { href: "/customers", label: "Customers", icon: Users, permission: "customers.view" },
-      { href: "/contact-messages", label: "Contact", icon: Mail, permission: "contact_messages.view" },
       { href: "/reservations", label: "Reservations", icon: CalendarDays, permission: "reservations.view" },
       { href: "/payments", label: "Payments", icon: CreditCard, permission: "payments.view" },
     ],

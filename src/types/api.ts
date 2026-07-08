@@ -384,15 +384,9 @@ export interface Alert {
   message: string | null;
   due_date: string | null;
   reservation_id: number | null;
-  contact_message_id?: number | null;
   reservation?: {
     id: number;
     reservation_number: string;
-  } | null;
-  contact_message?: {
-    id: number;
-    name: string;
-    email: string;
   } | null;
   alert_type: LookupRef;
   alert_status: LookupRef;
@@ -402,18 +396,6 @@ export interface Alert {
     slug: string;
     plate_number: string;
   } | null;
-  created_at: string;
-  updated_at: string;
-}
-
-export interface ContactMessage {
-  id: number;
-  name: string;
-  email: string;
-  phone: string | null;
-  message: string;
-  is_read: boolean;
-  read_at: string | null;
   created_at: string;
   updated_at: string;
 }

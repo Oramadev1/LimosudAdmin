@@ -16,7 +16,6 @@ import {
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import {
-  getAlertContactMessageId,
   getAlertReservationId,
   getAlertStatusBadgeClass,
   getAlertTypeBadgeClass,
@@ -121,13 +120,6 @@ export default function AlertsPage() {
     const reservationId = getAlertReservationId(alert);
     if (reservationId) {
       router.push(`/reservations/${reservationId}`);
-    }
-  };
-
-  const openContactMessage = (alert: Alert) => {
-    const contactMessageId = getAlertContactMessageId(alert);
-    if (contactMessageId) {
-      router.push(`/contact-messages?message=${contactMessageId}`);
     }
   };
 
