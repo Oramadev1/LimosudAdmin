@@ -20,9 +20,9 @@ export const metadata: Metadata = {
   description: siteConfig.description,
   robots: { index: false, follow: false },
   icons: {
-    icon: siteConfig.logo,
-    shortcut: siteConfig.logo,
-    apple: siteConfig.logo,
+    icon: "/icon.jpg",
+    shortcut: "/icon.jpg",
+    apple: "/apple-icon.jpg",
   },
 };
 
