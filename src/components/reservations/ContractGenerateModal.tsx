@@ -6,9 +6,40 @@ import { useEffect, useState } from "react";
 import { getContractForm, generateContract } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { CONTRACT_PAYMENT_METHODS } from "@/lib/contract-payment-methods";
-import { formatCurrency, formatDateTime } from "@/lib/format";
+import { formatCurrency, formatDateTime, toInputDatetime } from "@/lib/format";
 import type { ContractDetailsPayload, ContractFormData } from "@/types/api";
 import { AdminFormField, ErrorMessage } from "@/components/ui/AdminUi";
+
+const MIN_RENTAL_DAYS = 3;
+
+function calculateRentalDays(pickupIso: string, dropoffIso: string): number {
+  const start = new Date(pickupIso).getTime();
+  const end = new Date(dropoffIso).getTime();
+
+  if (!Number.isFinite(start) || !Number.isFinite(end) || end <= start) {
+    return 0;
+  }
+
+  return Math.max(1, Math.ceil((end - start) / 86_400_000));
+}
+
+function formatExtensionTotal(amount: number): string {
+  return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(amount);
+}
+
+function parseFormattedAmount(value: string): number {
+  const digits = value.replace(/[^\d]/g, "");
+  return digits ? Number(digits) : 0;
+}
+
+function contractOverallTotal(extensionTotal: string, baseTotal: number): number {
+  const afterExtension = parseFormattedAmount(extensionTotal);
+  return afterExtension > 0 ? afterExtension : baseTotal;
+}
+
+function dropoffIsoFromInput(value: string): string {
+  return new Date(value).toISOString();
+}
 
 type ContractGenerateModalProps = {
   reservationId: number;
@@ -123,7 +154,21 @@ export function ContractGenerateModal({
         const response = await getContractForm(reservationId);
         if (cancelled) return;
         setForm(response.data);
-        setDetails(response.data.details);
+        const loadedDetails = response.data.details;
+        setDetails({
+          ...loadedDetails,
+          rental: {
+            ...loadedDetails.rental,
+            dropoff_datetime:
+              loadedDetails.rental.dropoff_datetime ??
+              response.data.auto.rental.dropoff_datetime,
+            total_days:
+              loadedDetails.rental.total_days ?? response.data.auto.rental.total_days,
+            extension_total:
+              loadedDetails.rental.extension_total?.trim() ||
+              formatExtensionTotal(response.data.auto.payment.total_price),
+          },
+        });
         setContractSeries(response.data.auto.contract_series);
       } catch (err) {
         if (!cancelled) {
@@ -151,7 +196,12 @@ export function ContractGenerateModal({
   };
 
   const handleSubmit = async () => {
-    if (!details) return;
+    if (!details || !form) return;
+
+    if (details.rental.total_days < MIN_RENTAL_DAYS) {
+      setError(`Rental duration must be at least ${MIN_RENTAL_DAYS} days.`);
+      return;
+    }
 
     setSubmitting(true);
     setError(null);
@@ -243,25 +293,47 @@ export function ContractGenerateModal({
                         : "—"
                     }
                   />
-                  <ReadOnlyField
-                    label="Retour"
-                    value={
-                      form.auto.rental.dropoff_datetime
-                        ? formatDateTime(form.auto.rental.dropoff_datetime)
-                        : "—"
-                    }
-                  />
+                  <AdminFormField label="Retour">
+                    <input
+                      type="datetime-local"
+                      className="admin-input"
+                      value={toInputDatetime(details.rental.dropoff_datetime)}
+                      onChange={(e) => {
+                        const pickupIso = form.auto.rental.pickup_datetime;
+                        if (!pickupIso || !e.target.value) {
+                          return;
+                        }
+
+                        const dropoffIso = dropoffIsoFromInput(e.target.value);
+                        const totalDays = calculateRentalDays(pickupIso, dropoffIso);
+
+                        updateDetails((current) => ({
+                          ...current,
+                          rental: {
+                            ...current.rental,
+                            dropoff_datetime: dropoffIso,
+                            total_days: totalDays,
+                          },
+                        }));
+                      }}
+                    />
+                    {details.rental.total_days > 0 && details.rental.total_days < MIN_RENTAL_DAYS ? (
+                      <p className="mt-1 text-xs text-red-600">
+                        Minimum rental is {MIN_RENTAL_DAYS} days (currently {details.rental.total_days}).
+                      </p>
+                    ) : null}
+                  </AdminFormField>
                   <ReadOnlyField
                     label="Lieu et date de reprise"
                     value={
-                      form.auto.rental.dropoff_location && form.auto.rental.dropoff_datetime
-                        ? `${form.auto.rental.dropoff_location} — ${formatDateTime(form.auto.rental.dropoff_datetime)}`
+                      form.auto.rental.dropoff_location && details.rental.dropoff_datetime
+                        ? `${form.auto.rental.dropoff_location} — ${formatDateTime(details.rental.dropoff_datetime)}`
                         : "—"
                     }
                   />
                   <ReadOnlyField
                     label="Duration"
-                    value={`${form.auto.rental.total_days} day(s)`}
+                    value={`${details.rental.total_days} day(s)`}
                   />
                 </div>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
@@ -277,6 +349,22 @@ export function ContractGenerateModal({
                       }
                     />
                   </AdminFormField>
+                </div>
+              </Section>
+
+              <Section title="Pricing summary">
+                <p className="mb-3 text-xs text-gray-500">
+                  Totals shown on the contract PDF. Total overall updates when you change total after extension.
+                </p>
+                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                  <ReadOnlyField
+                    label="Price per day"
+                    value={formatCurrency(form.auto.vehicle.daily_price)}
+                  />
+                  <ReadOnlyField
+                    label="Total before extension"
+                    value={formatCurrency(form.auto.payment.total_price)}
+                  />
                   <AdminFormField label="Total after extension">
                     <input
                       className="admin-input"
@@ -289,29 +377,30 @@ export function ContractGenerateModal({
                       }
                     />
                   </AdminFormField>
-                </div>
-              </Section>
-
-              <Section title="Pricing summary">
-                <p className="mb-3 text-xs text-gray-500">
-                  From the reservation and payments — shown on the contract PDF.
-                </p>
-                <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                   <ReadOnlyField
-                    label="Price per day"
-                    value={formatCurrency(form.auto.vehicle.daily_price)}
+                    label="Total overall"
+                    value={formatCurrency(
+                      contractOverallTotal(
+                        details.rental.extension_total,
+                        form.auto.payment.total_price,
+                      ),
+                    )}
                   />
-                  <ReadOnlyField
-                    label="Total price"
-                    value={formatCurrency(form.auto.payment.total_price)}
-                  />
-                  <ReadOnlyField label="Deposit (Caution)" value={formatCurrency(form.auto.payment.deposit_amount)} />
-                  <ReadOnlyField label="Delivery fee" value={formatCurrency(form.auto.payment.delivery_fee)} />
-                  <ReadOnlyField label="Advance paid (Avance)" value={formatCurrency(form.auto.payment.amount_paid)} />
                   <ReadOnlyField
                     label="Remaining (Reste)"
-                    value={formatCurrency(form.auto.payment.remaining_balance)}
+                    value={formatCurrency(
+                      Math.max(
+                        0,
+                        contractOverallTotal(
+                          details.rental.extension_total,
+                          form.auto.payment.total_price,
+                        ) - form.auto.payment.amount_paid,
+                      ),
+                    )}
                   />
+                  <ReadOnlyField label="Advance paid (Avance)" value={formatCurrency(form.auto.payment.amount_paid)} />
+                  <ReadOnlyField label="Deposit (Caution)" value={formatCurrency(form.auto.payment.deposit_amount)} />
+                  <ReadOnlyField label="Delivery fee" value={formatCurrency(form.auto.payment.delivery_fee)} />
                   <ReadOnlyField
                     label="Payment status"
                     value={form.auto.payment.payment_status ?? "—"}
@@ -439,32 +528,16 @@ export function ContractGenerateModal({
               </Section>
 
               <Section title="Vehicle details">
-                <div className="mb-4 grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                <div className="mb-4 grid gap-4 md:grid-cols-2">
                   <ReadOnlyField
                     label="Vehicle"
                     value={`${form.auto.vehicle.brand ?? ""} ${form.auto.vehicle.model ?? form.auto.vehicle.name}`.trim()}
                   />
                   <ReadOnlyField label="Plate number" value={form.auto.vehicle.plate_number} />
-                  <ReadOnlyField label="Category" value={form.auto.vehicle.category ?? "—"} />
-                  <ReadOnlyField
-                    label="Year"
-                    value={form.auto.vehicle.year ? String(form.auto.vehicle.year) : "—"}
-                  />
-                  <ReadOnlyField label="Transmission" value={form.auto.vehicle.transmission ?? "—"} />
-                  <ReadOnlyField label="Fuel type" value={form.auto.vehicle.fuel_type ?? "—"} />
                 </div>
                 <div className="grid gap-4 md:grid-cols-2">
                   <AdminFormField label="VIN">
                     <input className="admin-input" value={details.vehicle.vin ?? ""} onChange={(e) => updateDetails((c) => ({ ...c, vehicle: { ...c.vehicle, vin: e.target.value } }))} />
-                  </AdminFormField>
-                  <AdminFormField label="Color">
-                    <input className="admin-input" value={details.vehicle.color ?? ""} onChange={(e) => updateDetails((c) => ({ ...c, vehicle: { ...c.vehicle, color: e.target.value } }))} />
-                  </AdminFormField>
-                  <AdminFormField label="Mileage">
-                    <input type="number" className="admin-input" value={details.vehicle.mileage ?? ""} onChange={(e) => updateDetails((c) => ({ ...c, vehicle: { ...c.vehicle, mileage: e.target.value ? Number(e.target.value) : null } }))} />
-                  </AdminFormField>
-                  <AdminFormField label="Fuel level">
-                    <input className="admin-input" value={details.vehicle.fuel_level ?? ""} onChange={(e) => updateDetails((c) => ({ ...c, vehicle: { ...c.vehicle, fuel_level: e.target.value } }))} />
                   </AdminFormField>
                 </div>
               </Section>

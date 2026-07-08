@@ -114,13 +114,7 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
   }, [pendingPreviews]);
 
   const setField = (key: keyof typeof form, value: string | boolean) => {
-    setForm((current) => {
-      const next = { ...current, [key]: value };
-      if (key === "name" && typeof value === "string" && !vehicleId) {
-        next.slug = slugify(value);
-      }
-      return next;
-    });
+    setForm((current) => ({ ...current, [key]: value }));
   };
 
   const buildPayload = (): CreateVehiclePayload => ({
@@ -130,11 +124,11 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
     transmission_type_slug: form.transmission_type_slug,
     fuel_type_slug: form.fuel_type_slug,
     name: form.name,
-    slug: form.slug,
+    slug: vehicleId ? form.slug : slugify(form.name),
     model: form.model,
-    year: Number(form.year),
+    year: vehicleId ? Number(form.year) : new Date().getFullYear(),
     plate_number: form.plate_number,
-    mileage: Number(form.mileage),
+    mileage: vehicleId ? Number(form.mileage) : 0,
     seats: Number(form.seats),
     doors: Number(form.doors),
     daily_price: Number(form.daily_price),
@@ -274,7 +268,6 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
             <div className="grid gap-4 md:grid-cols-2">
               {[
                 ["name", "Name"],
-                ["slug", "Slug"],
                 ["model", "Model"],
                 ["plate_number", "Plate number"],
               ].map(([key, label]) => (
@@ -283,7 +276,7 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
                     value={form[key as keyof typeof form] as string}
                     onChange={(event) => setField(key as keyof typeof form, event.target.value)}
                     className="admin-input"
-                    required={key !== "slug"}
+                    required
                   />
                   {fieldErrors[key] ? (
                     <p className="mt-1 text-xs text-red-600">{fieldErrors[key]}</p>
@@ -367,8 +360,6 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
 
             <div className="grid gap-4 md:grid-cols-2">
               {[
-                ["year", "Year"],
-                ["mileage", "Mileage"],
                 ["seats", "Seats"],
                 ["doors", "Doors"],
                 ["daily_price", "Daily price"],

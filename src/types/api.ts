@@ -567,6 +567,8 @@ export interface ContractDetailsPayload {
     after: Record<string, string>;
   };
   rental: {
+    dropoff_datetime: string | null;
+    total_days: number;
     actual_return_date: string;
     actual_return_time: string;
     extension: string;
