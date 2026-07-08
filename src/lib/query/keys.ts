@@ -26,7 +26,6 @@ export const queryKeys = {
   expenseSummary: (year?: number, month?: number) => ["expenses", "summary", year, month] as const,
   alerts: (page: number) => ["alerts", page] as const,
   pendingAlerts: (page: number) => ["alerts", "pending", page] as const,
-  contactMessages: (page: number) => ["contact-messages", page] as const,
   users: (page: number) => ["users", page] as const,
   user: (id: number) => ["user", id] as const,
   roles: ["roles"] as const,

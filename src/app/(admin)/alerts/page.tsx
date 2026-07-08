@@ -194,22 +194,16 @@ export default function AlertsPage() {
             <tbody>
               {alerts.map((alert) => {
                 const reservationId = getAlertReservationId(alert);
-                const contactMessageId = getAlertContactMessageId(alert);
                 const isReservationAlert = alert.alert_type.slug === "reservation_follow_up";
-                const isContactAlert = alert.alert_type.slug === "website_contact";
                 const canOpenReservation = isReservationAlert && reservationId !== null;
-                const canOpenContact = isContactAlert && contactMessageId !== null;
-                const canOpen = canOpenReservation || canOpenContact;
 
                 return (
                   <tr
                     key={alert.id}
-                    className={canOpen ? "cursor-pointer" : undefined}
+                    className={canOpenReservation ? "cursor-pointer" : undefined}
                     onClick={() => {
                       if (canOpenReservation) {
                         openReservation(alert);
-                      } else if (canOpenContact) {
-                        openContactMessage(alert);
                       }
                     }}
                   >
@@ -242,14 +236,6 @@ export default function AlertsPage() {
                             Open
                           </Link>
                         ) : null}
-                        {canOpenContact ? (
-                          <Link
-                            href={`/contact-messages?message=${contactMessageId}`}
-                            className="font-semibold text-[#3563E9] hover:underline"
-                          >
-                            Open
-                          </Link>
-                        ) : null}
                         {alert.alert_status.slug === "pending" ? (
                           <>
                             <button
@@ -267,7 +253,7 @@ export default function AlertsPage() {
                               Ignore
                             </button>
                           </>
-                        ) : !canOpen ? (
+                        ) : !canOpenReservation ? (
                           <span className="text-sm text-gray-400">—</span>
                         ) : null}
                       </div>
