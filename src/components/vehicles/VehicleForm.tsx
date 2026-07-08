@@ -12,7 +12,6 @@ import {
   uploadVehiclePhotos,
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
-import { slugify } from "@/lib/format";
 import { parseFormSubmissionError, useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { storageUrl } from "@/lib/images";
 import { useSubmitLock } from "@/lib/use-submit-lock";
@@ -34,11 +33,8 @@ const defaultForm = {
   transmission_type_slug: "manual",
   fuel_type_slug: "diesel",
   name: "",
-  slug: "",
   model: "",
-  year: String(new Date().getFullYear()),
   plate_number: "",
-  mileage: "0",
   seats: "5",
   doors: "4",
   daily_price: "",
@@ -47,6 +43,21 @@ const defaultForm = {
   is_featured: false,
   is_active: true,
 };
+
+const STEP_ONE_FIELDS = new Set([
+  "name",
+  "model",
+  "plate_number",
+  "brand_id",
+  "category_id",
+  "daily_price",
+  "deposit_amount",
+  "seats",
+  "doors",
+  "status_slug",
+  "transmission_type_slug",
+  "fuel_type_slug",
+]);
 
 const STEP_LABELS = ["Vehicle details", "Photos & settings"] as const;
 
@@ -92,11 +103,8 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
       transmission_type_slug: data.transmission_type.slug,
       fuel_type_slug: data.fuel_type.slug,
       name: data.name,
-      slug: data.slug,
       model: data.model,
-      year: String(data.year),
       plate_number: data.plate_number,
-      mileage: String(data.mileage),
       seats: String(data.seats),
       doors: String(data.doors),
       daily_price: data.daily_price,
@@ -124,11 +132,8 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
     transmission_type_slug: form.transmission_type_slug,
     fuel_type_slug: form.fuel_type_slug,
     name: form.name,
-    slug: vehicleId ? form.slug : slugify(form.name),
     model: form.model,
-    year: vehicleId ? Number(form.year) : new Date().getFullYear(),
     plate_number: form.plate_number,
-    mileage: vehicleId ? Number(form.mileage) : 0,
     seats: Number(form.seats),
     doors: Number(form.doors),
     daily_price: Number(form.daily_price),
@@ -201,7 +206,10 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
       } catch (err) {
         const parsed = parseFormSubmissionError(err, "Save failed.");
         applySubmissionError(err, "Save failed.");
-        if (Object.keys(parsed.fieldErrors).length > 0) {
+        const hasStepOneErrors = Object.keys(parsed.fieldErrors).some((key) =>
+          STEP_ONE_FIELDS.has(key),
+        );
+        if (hasStepOneErrors) {
           setStep(1);
         }
       }

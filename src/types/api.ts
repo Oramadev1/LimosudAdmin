@@ -104,10 +104,7 @@ export interface Vehicle {
   name: string;
   slug: string;
   model: string;
-  year: number;
   plate_number: string;
-  mileage: number;
-  current_mileage_updated_at: string | null;
   seats: number;
   doors: number;
   daily_price: string;
@@ -147,17 +144,13 @@ export interface CreateVehiclePayload {
   transmission_type_slug: string;
   fuel_type_slug: string;
   name: string;
-  slug: string;
   model: string;
-  year: number;
   plate_number: string;
-  mileage: number;
   seats: number;
   doors: number;
   daily_price: number;
   deposit_amount: number;
   description?: string | null;
-  current_mileage_updated_at?: string | null;
   is_featured?: boolean;
   is_active?: boolean;
 }

@@ -14,6 +14,7 @@ import {
   inputErrorClass,
   PageHeader,
 } from "@/components/ui/AdminUi";
+import { AdminPasswordInput } from "@/components/ui/AdminPasswordInput";
 
 export function ProfileClient() {
   const { user, updateUser } = useAuth();
@@ -195,8 +196,7 @@ export function ProfileClient() {
 
         <div className="grid gap-4 md:grid-cols-3">
           <AdminFormField label="Current password" error={passwordFieldErrors.current_password}>
-            <input
-              type="password"
+            <AdminPasswordInput
               value={passwordForm.current_password}
               onChange={(event) => {
                 setPasswordForm((current) => ({
@@ -205,28 +205,24 @@ export function ProfileClient() {
                 }));
                 clearPasswordFieldError("current_password");
               }}
-              className={`admin-input ${inputErrorClass(passwordFieldErrors.current_password)}`}
               autoComplete="current-password"
             />
           </AdminFormField>
 
           <AdminFormField label="New password" error={passwordFieldErrors.password}>
-            <input
-              type="password"
+            <AdminPasswordInput
               value={passwordForm.password}
               onChange={(event) => {
                 setPasswordForm((current) => ({ ...current, password: event.target.value }));
                 clearPasswordFieldError("password");
               }}
-              className={`admin-input ${inputErrorClass(passwordFieldErrors.password)}`}
               autoComplete="new-password"
               minLength={8}
             />
           </AdminFormField>
 
           <AdminFormField label="Confirm new password" error={passwordFieldErrors.password_confirmation}>
-            <input
-              type="password"
+            <AdminPasswordInput
               value={passwordForm.password_confirmation}
               onChange={(event) => {
                 setPasswordForm((current) => ({
@@ -235,7 +231,6 @@ export function ProfileClient() {
                 }));
                 clearPasswordFieldError("password_confirmation");
               }}
-              className={`admin-input ${inputErrorClass(passwordFieldErrors.password_confirmation)}`}
               autoComplete="new-password"
               minLength={8}
             />
@@ -251,7 +246,7 @@ export function ProfileClient() {
               !passwordForm.password ||
               !passwordForm.password_confirmation
             }
-            className="admin-btn-secondary"
+            className="admin-btn-primary"
           >
             {passwordMutation.isPending ? "Updating..." : "Update password"}
           </button>
