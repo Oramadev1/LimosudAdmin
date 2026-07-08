@@ -27,6 +27,25 @@ function formatExtensionTotal(amount: number): string {
   return new Intl.NumberFormat("fr-FR", { maximumFractionDigits: 0 }).format(amount);
 }
 
+function parseExtensionDays(value: string): number {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return 0;
+  }
+
+  const parsed = Number(trimmed.replace(/[^\d]/g, ""));
+  return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function calculateTotalAfterExtension(
+  baseTotal: number,
+  dailyPrice: number,
+  extensionDays: number,
+): string {
+  const total = baseTotal + extensionDays * dailyPrice;
+  return formatExtensionTotal(total);
+}
+
 function parseFormattedAmount(value: string): number {
   const digits = value.replace(/[^\d]/g, "");
   return digits ? Number(digits) : 0;
@@ -188,6 +207,29 @@ export function ContractGenerateModal({
     };
   }, [open, reservationId]);
 
+  const baseTotal = form?.auto.payment.total_price ?? 0;
+  const dailyPrice = form?.auto.vehicle.daily_price ?? 0;
+  const extensionDays = details ? parseExtensionDays(details.rental.extension) : 0;
+
+  const updateExtensionTotal = (
+    extensionValue: string,
+    current: ContractDetailsPayload,
+  ): ContractDetailsPayload => {
+    const days = parseExtensionDays(extensionValue);
+
+    return {
+      ...current,
+      rental: {
+        ...current.rental,
+        extension: extensionValue,
+        extension_total:
+          days >= 1
+            ? calculateTotalAfterExtension(baseTotal, dailyPrice, days)
+            : formatExtensionTotal(baseTotal),
+      },
+    };
+  };
+
   const missingFields =
     form && details ? resolveMissingFields(form.auto, details) : [];
 
@@ -200,6 +242,11 @@ export function ContractGenerateModal({
 
     if (details.rental.total_days < MIN_RENTAL_DAYS) {
       setError(`Rental duration must be at least ${MIN_RENTAL_DAYS} days.`);
+      return;
+    }
+
+    if (details.rental.extension.trim() !== "" && extensionDays < 1) {
+      setError("Extension must be at least 1 day.");
       return;
     }
 
@@ -337,17 +384,26 @@ export function ContractGenerateModal({
                   />
                 </div>
                 <div className="mt-4 grid gap-4 md:grid-cols-2">
-                  <AdminFormField label="Extension (Prolongation)">
+                  <AdminFormField label="Extension (Prolongation) — days">
                     <input
+                      type="number"
+                      min={1}
+                      step={1}
                       className="admin-input"
+                      placeholder="e.g. 3"
                       value={details.rental.extension}
                       onChange={(e) =>
-                        updateDetails((c) => ({
-                          ...c,
-                          rental: { ...c.rental, extension: e.target.value },
-                        }))
+                        updateDetails((current) => updateExtensionTotal(e.target.value, current))
                       }
                     />
+                    {details.rental.extension.trim() !== "" && extensionDays < 1 ? (
+                      <p className="mt-1 text-xs text-red-600">Extension must be at least 1 day.</p>
+                    ) : extensionDays >= 1 ? (
+                      <p className="mt-1 text-xs text-gray-500">
+                        +{extensionDays} day(s) × {formatCurrency(dailyPrice)} ={" "}
+                        {formatCurrency(extensionDays * dailyPrice)}
+                      </p>
+                    ) : null}
                   </AdminFormField>
                 </div>
               </Section>
@@ -363,7 +419,7 @@ export function ContractGenerateModal({
                   />
                   <ReadOnlyField
                     label="Total before extension"
-                    value={formatCurrency(form.auto.payment.total_price)}
+                    value={formatCurrency(baseTotal)}
                   />
                   <AdminFormField label="Total after extension">
                     <input
@@ -376,13 +432,18 @@ export function ContractGenerateModal({
                         }))
                       }
                     />
+                    {extensionDays >= 1 ? (
+                      <p className="mt-1 text-xs text-gray-500">
+                        Auto-calculated from extension days (editable).
+                      </p>
+                    ) : null}
                   </AdminFormField>
                   <ReadOnlyField
                     label="Total overall"
                     value={formatCurrency(
                       contractOverallTotal(
                         details.rental.extension_total,
-                        form.auto.payment.total_price,
+                        baseTotal,
                       ),
                     )}
                   />
@@ -393,8 +454,8 @@ export function ContractGenerateModal({
                         0,
                         contractOverallTotal(
                           details.rental.extension_total,
-                          form.auto.payment.total_price,
-                        ) - form.auto.payment.amount_paid,
+                          baseTotal,
+                        ) - (form.auto.payment.amount_paid ?? 0),
                       ),
                     )}
                   />
