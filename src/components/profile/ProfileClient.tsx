@@ -122,8 +122,7 @@ export function ProfileClient() {
         description="View and update your account details."
       />
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,2fr)_minmax(0,1fr)]">
-        <form onSubmit={handleProfileSubmit} className="admin-card space-y-4 p-6">
+      <form onSubmit={handleProfileSubmit} className="admin-card space-y-4 p-6">
           <h2 className="text-lg font-bold text-gray-900">Account details</h2>
 
           <FormGlobalError message={profileGlobalError} />
@@ -180,39 +179,6 @@ export function ProfileClient() {
             </button>
           </div>
         </form>
-
-        <aside className="admin-card space-y-4 p-6">
-          <h2 className="text-lg font-bold text-gray-900">Account info</h2>
-
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-gray-400 uppercase">Status</p>
-            <p className="mt-1 text-sm font-medium text-gray-900">
-              {user.is_active ? "Active" : "Inactive"}
-            </p>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-gray-400 uppercase">Roles</p>
-            <ul className="mt-2 space-y-1">
-              {user.roles.map((role) => (
-                <li
-                  key={role.id}
-                  className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-[#3563E9]"
-                >
-                  {role.name}
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <p className="text-xs font-semibold tracking-wide text-gray-400 uppercase">Permissions</p>
-            <p className="mt-1 text-sm text-gray-600">
-              {user.permissions.length} permission{user.permissions.length === 1 ? "" : "s"} active
-            </p>
-          </div>
-        </aside>
-      </div>
 
       <form onSubmit={handlePasswordSubmit} className="admin-card mt-6 space-y-4 p-6">
         <h2 className="text-lg font-bold text-gray-900">Change password</h2>
