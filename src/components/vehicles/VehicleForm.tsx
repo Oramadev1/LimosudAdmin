@@ -15,6 +15,7 @@ import {
 import { ApiError } from "@/lib/api/client";
 import { parseFormSubmissionError, useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { storageUrl } from "@/lib/images";
+import { INPUT_LIMITS } from "@/lib/input-limits";
 import { useSubmitLock } from "@/lib/use-submit-lock";
 import { useAdminQuery, useLookupsQuery } from "@/lib/query/hooks";
 import { queryKeys } from "@/lib/query/keys";
@@ -283,6 +284,7 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
                 <AdminFormField key={key} label={label}>
                   <input
                     value={form[key as keyof typeof form] as string}
+                    maxLength={INPUT_LIMITS.name}
                     onChange={(event) => setField(key as keyof typeof form, event.target.value)}
                     className="admin-input"
                     required
@@ -406,6 +408,7 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
             <AdminFormField label="Description">
               <textarea
                 value={form.description}
+                maxLength={INPUT_LIMITS.message}
                 onChange={(event) => setField("description", event.target.value)}
                 className="admin-input min-h-24"
               />

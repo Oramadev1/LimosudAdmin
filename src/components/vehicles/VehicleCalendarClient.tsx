@@ -15,6 +15,7 @@ import {
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { formatDateTime, toApiDatetime, toInputDatetime } from "@/lib/format";
+import { INPUT_LIMITS } from "@/lib/input-limits";
 import { useAdminQuery } from "@/lib/query/hooks";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 import { useSubmitLock } from "@/lib/use-submit-lock";
@@ -525,6 +526,7 @@ export function VehicleCalendarClient({ vehicleId }: VehicleCalendarClientProps)
               <input
                 type="text"
                 value={form.customer_name}
+                maxLength={INPUT_LIMITS.name}
                 onChange={(event) =>
                   setForm((current) => ({ ...current, customer_name: event.target.value }))
                 }
@@ -537,6 +539,7 @@ export function VehicleCalendarClient({ vehicleId }: VehicleCalendarClientProps)
               <input
                 type="text"
                 value={form.phone}
+                maxLength={INPUT_LIMITS.phone}
                 onChange={(event) => setForm((current) => ({ ...current, phone: event.target.value }))}
                 className="admin-input"
               />
@@ -545,6 +548,7 @@ export function VehicleCalendarClient({ vehicleId }: VehicleCalendarClientProps)
             <AdminFormField label="Note">
               <textarea
                 value={form.note}
+                maxLength={INPUT_LIMITS.notes}
                 onChange={(event) => setForm((current) => ({ ...current, note: event.target.value }))}
                 className="admin-input min-h-20"
               />
@@ -588,6 +592,7 @@ export function VehicleCalendarClient({ vehicleId }: VehicleCalendarClientProps)
                           <input
                             type="text"
                             value={editForm.customer_name}
+                            maxLength={INPUT_LIMITS.name}
                             onChange={(event) =>
                               setEditForm((current) => ({ ...current, customer_name: event.target.value }))
                             }
@@ -599,6 +604,7 @@ export function VehicleCalendarClient({ vehicleId }: VehicleCalendarClientProps)
                           <input
                             type="text"
                             value={editForm.phone}
+                            maxLength={INPUT_LIMITS.phone}
                             onChange={(event) =>
                               setEditForm((current) => ({ ...current, phone: event.target.value }))
                             }
@@ -608,6 +614,7 @@ export function VehicleCalendarClient({ vehicleId }: VehicleCalendarClientProps)
                         <AdminFormField label="Note">
                           <textarea
                             value={editForm.note}
+                            maxLength={INPUT_LIMITS.notes}
                             onChange={(event) =>
                               setEditForm((current) => ({ ...current, note: event.target.value }))
                             }

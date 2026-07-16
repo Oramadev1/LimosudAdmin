@@ -6,6 +6,7 @@ import { useSubmitLock } from "@/lib/use-submit-lock";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import { RentalDatetimeFields, hasValidRentalDatetimeRange } from "@/components/reservations/RentalDatetimeFields";
+import { INPUT_LIMITS } from "@/lib/input-limits";
 import {
   checkReservationAvailability,
   createReservation,
@@ -233,6 +234,7 @@ export default function NewReservationPage() {
           <textarea
             placeholder="Customer notes"
             value={form.customer_notes}
+            maxLength={INPUT_LIMITS.notes}
             onChange={(e) => {
               setForm((c) => ({ ...c, customer_notes: e.target.value }));
               clearFieldError("customer_notes");
@@ -244,6 +246,7 @@ export default function NewReservationPage() {
           <textarea
             placeholder="Admin notes"
             value={form.admin_notes}
+            maxLength={INPUT_LIMITS.notes}
             onChange={(e) => {
               setForm((c) => ({ ...c, admin_notes: e.target.value }));
               clearFieldError("admin_notes");
