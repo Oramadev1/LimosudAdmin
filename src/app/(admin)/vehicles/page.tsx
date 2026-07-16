@@ -7,6 +7,7 @@ import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import { AdminImageThumb } from "@/components/ui/AdminImageThumb";
 import { VehicleStatusSelect } from "@/components/vehicles/VehicleStatusSelect";
+import { VehicleHomepageRankSelect } from "@/components/vehicles/VehicleHomepageRankSelect";
 import { useAuth } from "@/contexts/AuthContext";
 import { deleteVehicle, getVehicles, updateVehicle } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
@@ -49,11 +50,28 @@ export default function VehiclesPageClient() {
     },
   });
 
+  const homepageRankMutation = useLockedMutation({
+    mutationFn: ({ id, homepage_rank }: { id: number; homepage_rank: number | null }) =>
+      updateVehicle(id, { homepage_rank }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["vehicles"] });
+    },
+  });
+
   const handleStatusChange = async (vehicleId: number, statusSlug: string) => {
     try {
       await statusMutation.mutateAsync({ id: vehicleId, status_slug: statusSlug });
     } catch (err) {
       alert(err instanceof ApiError ? err.message : "Failed to update vehicle status.");
+      throw err;
+    }
+  };
+
+  const handleHomepageRankChange = async (vehicleId: number, homepageRank: number | null) => {
+    try {
+      await homepageRankMutation.mutateAsync({ id: vehicleId, homepage_rank: homepageRank });
+    } catch (err) {
+      alert(err instanceof ApiError ? err.message : "Failed to update homepage position.");
       throw err;
     }
   };
@@ -121,6 +139,7 @@ export default function VehiclesPageClient() {
                 <th className="px-4 py-3 text-left">Vehicle</th>
                 <th className="px-4 py-3 text-left">Plate</th>
                 <th className="px-4 py-3 text-left">Status</th>
+                <th className="px-4 py-3 text-left">Home #</th>
                 <th className="px-4 py-3 text-left">Daily price</th>
                 <th className="px-4 py-3 text-left">Active</th>
                 <th className="px-4 py-3 text-left">Actions</th>
@@ -169,6 +188,17 @@ export default function VehiclesPageClient() {
                         vehicle.status.name
                       )}
                     </td>
+                    <td className="px-4 py-3">
+                      {canUpdateVehicles ? (
+                        <VehicleHomepageRankSelect
+                          vehicleId={vehicle.id}
+                          currentRank={vehicle.homepage_rank}
+                          onChange={handleHomepageRankChange}
+                        />
+                      ) : (
+                        (vehicle.homepage_rank ?? "—")
+                      )}
+                    </td>
                     <td className="px-4 py-3">{formatCurrency(vehicle.daily_price)}</td>
                     <td className="px-4 py-3">{vehicle.is_active ? "Yes" : "No"}</td>
                     <td className="px-4 py-3">
@@ -178,6 +208,12 @@ export default function VehiclesPageClient() {
                           className="text-[#3563E9] hover:underline"
                         >
                           Edit
+                        </Link>
+                        <Link
+                          href={`/vehicles/${vehicle.id}/calendar`}
+                          className="text-[#3563E9] hover:underline"
+                        >
+                          Calendar
                         </Link>
                         <button
                           type="button"

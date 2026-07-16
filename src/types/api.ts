@@ -111,6 +111,7 @@ export interface Vehicle {
   deposit_amount: string;
   description: string | null;
   is_featured: boolean;
+  homepage_rank: number | null;
   is_active: boolean;
   brand: LookupRef;
   category: LookupRef;
@@ -152,6 +153,7 @@ export interface CreateVehiclePayload {
   deposit_amount: number;
   description?: string | null;
   is_featured?: boolean;
+  homepage_rank?: number | null;
   is_active?: boolean;
 }
 
@@ -309,7 +311,25 @@ export interface BlockedReservationPeriod {
   start_datetime: string;
   end_datetime: string;
   status: string | null;
-  reservation_number: string;
+  reservation_number?: string | null;
+  reservation_id?: number | null;
+  type?: "reservation" | "hold";
+  hold_id?: number | null;
+  customer_name?: string | null;
+  source?: string | null;
+}
+
+export interface VehicleAvailabilityHold {
+  id: number;
+  vehicle_id: number;
+  starts_at: string;
+  ends_at: string;
+  customer_name: string;
+  phone: string | null;
+  note: string | null;
+  created_by: number | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface SuggestedReservationPeriod {

@@ -30,6 +30,7 @@ import type {
   Reservation,
   ReservationAvailabilityResult,
   VehicleAvailabilitySchedule,
+  VehicleAvailabilityHold,
   Vehicle,
   VehicleBrand,
   VehicleCategory,
@@ -299,6 +300,7 @@ export function checkReservationAvailability(payload: {
   start_datetime: string;
   end_datetime: string;
   ignore_reservation_id?: number | null;
+  ignore_hold_id?: number | null;
 }) {
   return withAuth<ReservationAvailabilityResult>("/admin/reservations/check-availability", {
     method: "POST",
@@ -306,13 +308,86 @@ export function checkReservationAvailability(payload: {
   });
 }
 
-export function getVehicleAvailabilitySchedule(vehicleId: number, ignoreReservationId?: number | null) {
+export function getVehicleAvailabilitySchedule(
+  vehicleId: number,
+  options?: { from?: string; to?: string; ignoreReservationId?: number | null },
+) {
   const params = new URLSearchParams({ vehicle_id: String(vehicleId) });
-  if (ignoreReservationId) {
-    params.set("ignore_reservation_id", String(ignoreReservationId));
+  if (options?.from) {
+    params.set("from", options.from);
+  }
+  if (options?.to) {
+    params.set("to", options.to);
+  }
+  if (options?.ignoreReservationId) {
+    params.set("ignore_reservation_id", String(options.ignoreReservationId));
   }
 
   return withAuth<VehicleAvailabilitySchedule>(`/admin/reservations/vehicle-availability?${params.toString()}`);
+}
+
+export function getVehicleSchedule(
+  vehicleId: number,
+  options?: { from?: string; to?: string },
+) {
+  const params = new URLSearchParams();
+  if (options?.from) {
+    params.set("from", options.from);
+  }
+  if (options?.to) {
+    params.set("to", options.to);
+  }
+
+  const query = params.toString();
+
+  return withAuth<VehicleAvailabilitySchedule>(
+    `/admin/vehicles/${vehicleId}/schedule${query ? `?${query}` : ""}`,
+  );
+}
+
+export function getVehicleAvailabilityHolds(vehicleId: number) {
+  return withAuth<{ data: VehicleAvailabilityHold[] }>(
+    `/admin/vehicles/${vehicleId}/availability-holds`,
+  );
+}
+
+export function createVehicleAvailabilityHold(
+  vehicleId: number,
+  payload: {
+    starts_at: string;
+    ends_at: string;
+    customer_name: string;
+    phone?: string | null;
+    note?: string | null;
+  },
+) {
+  return withAuth<{ data: VehicleAvailabilityHold }>(
+    `/admin/vehicles/${vehicleId}/availability-holds`,
+    { method: "POST", ...json(payload) },
+  );
+}
+
+export function updateVehicleAvailabilityHold(
+  vehicleId: number,
+  holdId: number,
+  payload: {
+    starts_at?: string;
+    ends_at?: string;
+    customer_name?: string;
+    phone?: string | null;
+    note?: string | null;
+  },
+) {
+  return withAuth<{ data: VehicleAvailabilityHold }>(
+    `/admin/vehicles/${vehicleId}/availability-holds/${holdId}`,
+    { method: "PATCH", ...json(payload) },
+  );
+}
+
+export function deleteVehicleAvailabilityHold(vehicleId: number, holdId: number) {
+  return withAuth<void>(`/admin/vehicles/${vehicleId}/availability-holds/${holdId}`, {
+    method: "DELETE",
+  });
 }
 
 export function reservationAction(

@@ -1,12 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useState } from "react";
+import { FormEvent, useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
 import {
   cancelContract,
+  checkReservationAvailability,
   createPayment,
   deleteReservation,
   downloadContract,
@@ -15,11 +16,12 @@ import {
   getReservation,
   markContractSigned,
   reservationAction,
+  updateReservation,
 } from "@/lib/api/admin";
 import { ApiError } from "@/lib/api/client";
 import { CONTRACT_PAYMENT_METHODS } from "@/lib/contract-payment-methods";
 import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
-import { formatCurrency, formatDateTime } from "@/lib/format";
+import { formatCurrency, formatDateTime, toApiDatetime, toInputDatetime } from "@/lib/format";
 import {
   getPaymentStatusBadgeClass,
   getReservationStatusBadgeClass,
@@ -41,8 +43,10 @@ import { queryKeys } from "@/lib/query/keys";
 import { useSubmitLock } from "@/lib/use-submit-lock";
 import { AdminFormField, DetailRow, ErrorMessage, FormGlobalError, inputErrorClass, SectionCard } from "@/components/ui/AdminUi";
 import { ContractGenerateModal } from "@/components/reservations/ContractGenerateModal";
+import { RentalDatetimeFields, hasValidRentalDatetimeRange } from "@/components/reservations/RentalDatetimeFields";
 import { StatusBadge } from "@/components/ui/StatusBadge";
 import { useAuth } from "@/contexts/AuthContext";
+import type { ReservationAvailabilityResult } from "@/types/api";
 
 export function ReservationDetailClient({ id }: { id: number }) {
   const queryClient = useQueryClient();
@@ -64,6 +68,11 @@ export function ReservationDetailClient({ id }: { id: number }) {
     reference: "",
     notes: "",
   });
+  const [editingDates, setEditingDates] = useState(false);
+  const [dateForm, setDateForm] = useState({ start_datetime: "", end_datetime: "" });
+  const [dateFormError, setDateFormError] = useState<string | null>(null);
+  const [checkingDateAvailability, setCheckingDateAvailability] = useState(false);
+  const [dateAvailability, setDateAvailability] = useState<ReservationAvailabilityResult | null>(null);
   const {
     globalError: paymentGlobalError,
     fieldErrors: paymentFieldErrors,
@@ -108,6 +117,16 @@ export function ReservationDetailClient({ id }: { id: number }) {
   const paymentMutation = useLockedMutation({
     mutationFn: createPayment,
     onSuccess: invalidate,
+  });
+
+  const updateDatesMutation = useLockedMutation({
+    mutationFn: (payload: { start_datetime: string; end_datetime: string }) => updateReservation(id, payload),
+    onSuccess: () => {
+      invalidate();
+      setEditingDates(false);
+      setDateFormError(null);
+      setDateAvailability(null);
+    },
   });
 
   const handleAction = async (action: "confirm" | "start" | "complete" | "cancel" | "reject" | "reopen") => {
@@ -235,6 +254,77 @@ export function ReservationDetailClient({ id }: { id: number }) {
     });
   };
 
+  const statusSlug = reservation?.status.slug;
+  const terminalStatuses = ["completed", "cancelled", "rejected"];
+  const canEditDates =
+    Boolean(reservation) &&
+    hasPermission("reservations.update") &&
+    statusSlug != null &&
+    !terminalStatuses.includes(statusSlug);
+
+  const hasValidDateForm = hasValidRentalDatetimeRange(dateForm.start_datetime, dateForm.end_datetime);
+
+  useEffect(() => {
+    if (!editingDates || !reservation?.vehicle?.id || !hasValidDateForm) {
+      setDateAvailability(null);
+      return;
+    }
+
+    const timer = window.setTimeout(async () => {
+      setCheckingDateAvailability(true);
+      try {
+        const result = await checkReservationAvailability({
+          vehicle_id: reservation.vehicle.id,
+          start_datetime: toApiDatetime(dateForm.start_datetime),
+          end_datetime: toApiDatetime(dateForm.end_datetime),
+          ignore_reservation_id: reservation.id,
+        });
+        setDateAvailability(result);
+      } catch {
+        setDateAvailability(null);
+      } finally {
+        setCheckingDateAvailability(false);
+      }
+    }, 400);
+
+    return () => window.clearTimeout(timer);
+  }, [dateForm.end_datetime, dateForm.start_datetime, editingDates, hasValidDateForm, reservation]);
+
+  const startEditingDates = () => {
+    if (!reservation) return;
+    setDateForm({
+      start_datetime: toInputDatetime(reservation.start_datetime),
+      end_datetime: toInputDatetime(reservation.end_datetime),
+    });
+    setDateFormError(null);
+    setDateAvailability(null);
+    setEditingDates(true);
+  };
+
+  const handleSaveDates = async (event: FormEvent) => {
+    event.preventDefault();
+    setDateFormError(null);
+
+    if (!hasValidDateForm) {
+      setDateFormError("End must be after start.");
+      return;
+    }
+
+    if (!dateAvailability?.available) {
+      setDateFormError("The vehicle is not available for these dates.");
+      return;
+    }
+
+    try {
+      await updateDatesMutation.mutateAsync({
+        start_datetime: toApiDatetime(dateForm.start_datetime),
+        end_datetime: toApiDatetime(dateForm.end_datetime),
+      });
+    } catch (err) {
+      setDateFormError(err instanceof ApiError ? err.message : "Failed to update rental dates.");
+    }
+  };
+
   if (isPending) {
     return <div className="admin-card p-6 text-sm text-gray-500">Loading reservation...</div>;
   }
@@ -244,7 +334,6 @@ export function ReservationDetailClient({ id }: { id: number }) {
   }
 
   const contract = contractData?.data;
-  const statusSlug = reservation.status.slug;
   const allowedActions = filterAllowedReservationActions(statusSlug, hasPermission);
   const statusHint = getReservationStatusHint(statusSlug);
   const canManageContracts = hasPermission("contracts.generate");
@@ -378,8 +467,65 @@ export function ReservationDetailClient({ id }: { id: number }) {
           <DetailRow label="Vehicle" value={reservation.vehicle?.name ?? "—"} />
           <DetailRow label="Pickup" value={reservation.pickup_location?.name ?? "—"} />
           <DetailRow label="Drop-off" value={reservation.dropoff_location?.name ?? "—"} />
-          <DetailRow label="Start" value={formatDateTime(reservation.start_datetime)} />
-          <DetailRow label="End" value={formatDateTime(reservation.end_datetime)} />
+          {editingDates ? (
+            <form onSubmit={handleSaveDates} className="mt-4 space-y-4 border-t border-gray-100 pt-4">
+              <p className="text-sm font-semibold text-gray-900">Extend or change rental dates</p>
+              <p className="text-xs text-gray-500">
+                Total price and payment status will be recalculated when you save.
+              </p>
+              {dateFormError ? <FormGlobalError message={dateFormError} /> : null}
+              <RentalDatetimeFields
+                startValue={dateForm.start_datetime}
+                endValue={dateForm.end_datetime}
+                checking={checkingDateAvailability}
+                availability={dateAvailability}
+                onStartChange={(start_datetime) =>
+                  setDateForm((current) => ({ ...current, start_datetime }))
+                }
+                onEndChange={(end_datetime) =>
+                  setDateForm((current) => ({ ...current, end_datetime }))
+                }
+              />
+              <div className="flex flex-wrap gap-2">
+                <button
+                  type="submit"
+                  className="admin-btn-primary"
+                  disabled={
+                    updateDatesMutation.isPending ||
+                    checkingDateAvailability ||
+                    !dateAvailability?.available
+                  }
+                >
+                  {updateDatesMutation.isPending ? "Saving…" : "Save dates"}
+                </button>
+                <button
+                  type="button"
+                  className="admin-btn-secondary"
+                  onClick={() => {
+                    setEditingDates(false);
+                    setDateFormError(null);
+                    setDateAvailability(null);
+                  }}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          ) : (
+            <>
+              <DetailRow label="Start" value={formatDateTime(reservation.start_datetime)} />
+              <DetailRow label="End" value={formatDateTime(reservation.end_datetime)} />
+              {canEditDates ? (
+                <button
+                  type="button"
+                  className="mt-2 text-sm text-[#3563E9] hover:underline"
+                  onClick={startEditingDates}
+                >
+                  Extend or change dates
+                </button>
+              ) : null}
+            </>
+          )}
           <DetailRow label="Total price" value={formatCurrency(reservation.total_price)} />
           {reservation.customer_notes ? (
             <DetailRow label="Customer notes" value={reservation.customer_notes} />

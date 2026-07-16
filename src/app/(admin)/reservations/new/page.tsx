@@ -5,13 +5,12 @@ import { useRouter } from "next/navigation";
 import { useSubmitLock } from "@/lib/use-submit-lock";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 
-import { RentalPeriodFields } from "@/components/reservations/RentalPeriodFields";
+import { RentalDatetimeFields, hasValidRentalDatetimeRange } from "@/components/reservations/RentalDatetimeFields";
 import {
   checkReservationAvailability,
   createReservation,
   getCustomers,
   getLocations,
-  getVehicleAvailabilitySchedule,
   getVehicles,
 } from "@/lib/api/admin";
 import { toApiDatetime } from "@/lib/format";
@@ -43,18 +42,11 @@ export default function NewReservationPage() {
   });
 
   const vehicleId = form.vehicle_id ? Number(form.vehicle_id) : null;
-  const hasValidDates =
-    Boolean(form.start_datetime && form.end_datetime) &&
-    new Date(form.end_datetime) > new Date(form.start_datetime);
+  const hasValidDates = hasValidRentalDatetimeRange(form.start_datetime, form.end_datetime);
 
   const { data: customers } = useAdminQuery({ queryKey: ["customers", 1], queryFn: () => getCustomers(1) });
   const { data: vehicles } = useAdminQuery({ queryKey: ["vehicles", 1], queryFn: () => getVehicles(1) });
   const { data: locations } = useAdminQuery({ queryKey: ["locations", 1], queryFn: () => getLocations(1) });
-  const { data: vehicleSchedule } = useAdminQuery({
-    queryKey: ["vehicle-availability-schedule", vehicleId],
-    queryFn: () => getVehicleAvailabilitySchedule(vehicleId!),
-    enabled: vehicleId !== null,
-  });
 
   const createMutation = useLockedMutation({
     mutationFn: createReservation,
@@ -108,7 +100,7 @@ export default function NewReservationPage() {
 
         if (!availabilityResult.available) {
           setAvailability(availabilityResult);
-          setGlobalError("The selected period is not available. Choose open dates on the calendar.");
+          setGlobalError("The selected period is not available. Choose different dates.");
           return;
         }
 
@@ -128,14 +120,11 @@ export default function NewReservationPage() {
     });
   };
 
-  const blockedPeriods = vehicleSchedule?.blocked_periods ?? [];
-  const vehicleRentable = vehicleSchedule?.vehicle_rentable ?? false;
-
   return (
     <div>
       <PageHeader
         title="New reservation"
-        description="Select a vehicle, then pick open dates on the calendar. Booked dates are disabled."
+        description="Select a vehicle, then choose start and end dates. Availability is checked automatically."
       />
 
       <form onSubmit={handleSubmit} className="admin-card space-y-4 p-6">
@@ -215,42 +204,30 @@ export default function NewReservationPage() {
           </AdminFormField>
 
           {vehicleId ? (
-            <RentalPeriodFields
-              startValue={form.start_datetime}
-              endValue={form.end_datetime}
-              blockedPeriods={blockedPeriods}
-              vehicleRentable={vehicleRentable}
-              onStartChange={(start_datetime) => {
-                setForm((current) => ({ ...current, start_datetime }));
-                clearFieldError("start_datetime");
-                setGlobalError(null);
-              }}
-              onEndChange={(end_datetime) => {
-                setForm((current) => ({ ...current, end_datetime }));
-                clearFieldError("end_datetime");
-                setGlobalError(null);
-              }}
-            />
+            <div className="md:col-span-2">
+              <RentalDatetimeFields
+                startValue={form.start_datetime}
+                endValue={form.end_datetime}
+                checking={checkingAvailability}
+                availability={availability}
+                onStartChange={(start_datetime) => {
+                  setForm((current) => ({ ...current, start_datetime }));
+                  clearFieldError("start_datetime");
+                  setGlobalError(null);
+                }}
+                onEndChange={(end_datetime) => {
+                  setForm((current) => ({ ...current, end_datetime }));
+                  clearFieldError("end_datetime");
+                  setGlobalError(null);
+                }}
+              />
+            </div>
           ) : (
             <div className="md:col-span-2 rounded-xl border border-dashed border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-              Select a vehicle to open the calendar and choose rental dates.
+              Select a vehicle to choose rental dates.
             </div>
           )}
         </div>
-
-        {vehicleId && hasValidDates ? (
-          <div className="rounded-xl border border-gray-200 bg-white px-4 py-3 text-sm">
-            {checkingAvailability ? (
-              <span className="text-gray-500">Checking availability...</span>
-            ) : availability?.available ? (
-              <span className="font-medium text-green-700">This period is available.</span>
-            ) : availability ? (
-              <span className="font-medium text-red-700">
-                This period overlaps a booking. Choose different dates on the calendar.
-              </span>
-            ) : null}
-          </div>
-        ) : null}
 
         <AdminFormField error={fieldErrors.customer_notes}>
           <textarea
@@ -276,7 +253,17 @@ export default function NewReservationPage() {
         </AdminFormField>
 
         <div className="flex flex-wrap gap-3">
-          <button type="submit" disabled={busy || createMutation.isPending} className="admin-btn-primary">
+          <button
+            type="submit"
+            disabled={
+              busy ||
+              createMutation.isPending ||
+              !hasValidDates ||
+              checkingAvailability ||
+              !availability?.available
+            }
+            className="admin-btn-primary"
+          >
             {busy || createMutation.isPending ? "Creating..." : "Create reservation"}
           </button>
         </div>

@@ -1,6 +1,7 @@
 "use client";
 
 import { FormEvent, useEffect, useState } from "react";
+import Link from "next/link";
 import { useQueryClient } from "@tanstack/react-query";
 import { useLockedMutation } from "@/lib/use-locked-mutation";
 import { useRouter } from "next/navigation";
@@ -417,7 +418,7 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
                   checked={form.is_featured}
                   onChange={(event) => setField("is_featured", event.target.checked)}
                 />
-                Featured on homepage
+                Show featured badge
               </label>
               <label className="flex items-center gap-2 text-sm text-gray-700">
                 <input
@@ -428,6 +429,12 @@ export function VehicleForm({ vehicleId }: VehicleFormProps) {
                 Active
               </label>
             </div>
+
+            {vehicleId ? (
+              <Link href={`/vehicles/${vehicleId}/calendar`} className="inline-block text-sm text-[#3563E9] hover:underline">
+                Open availability calendar →
+              </Link>
+            ) : null}
           </>
         )}
 
