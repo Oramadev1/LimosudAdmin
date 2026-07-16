@@ -254,13 +254,12 @@ export function ReservationDetailClient({ id }: { id: number }) {
     });
   };
 
-  const statusSlug = reservation?.status.slug;
   const terminalStatuses = ["completed", "cancelled", "rejected"];
   const canEditDates =
     Boolean(reservation) &&
     hasPermission("reservations.update") &&
-    statusSlug != null &&
-    !terminalStatuses.includes(statusSlug);
+    reservation?.status.slug != null &&
+    !terminalStatuses.includes(reservation.status.slug);
 
   const hasValidDateForm = hasValidRentalDatetimeRange(dateForm.start_datetime, dateForm.end_datetime);
 
@@ -333,6 +332,7 @@ export function ReservationDetailClient({ id }: { id: number }) {
     return <ErrorMessage message="Reservation not found." />;
   }
 
+  const statusSlug = reservation.status.slug;
   const contract = contractData?.data;
   const allowedActions = filterAllowedReservationActions(statusSlug, hasPermission);
   const statusHint = getReservationStatusHint(statusSlug);
