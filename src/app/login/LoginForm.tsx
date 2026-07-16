@@ -7,7 +7,6 @@ import { login } from "@/lib/api/auth";
 import { useSubmitLock } from "@/lib/use-submit-lock";
 import { useAdminFormErrors } from "@/lib/use-admin-form-errors";
 import { useAuth } from "@/contexts/AuthContext";
-import { siteConfig } from "@/config/site";
 import { AdminFormField, FormGlobalError, inputErrorClass } from "@/components/ui/AdminUi";
 
 export function LoginForm() {
@@ -72,10 +71,6 @@ export function LoginForm() {
       <button type="submit" disabled={busy} className="admin-btn-primary w-full">
         {busy ? "Signing in..." : "Sign in"}
       </button>
-
-      <p className="text-center text-xs text-gray-400">
-        {siteConfig.brand} admin · API {siteConfig.apiUrl}
-      </p>
     </form>
   );
 }

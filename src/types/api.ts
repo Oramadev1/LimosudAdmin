@@ -555,7 +555,6 @@ export interface ContractDetailsPayload {
     nationality: string;
     phone: string;
   };
-  equipment: Record<string, boolean>;
   documents: Record<string, boolean>;
   condition: {
     before: Record<string, string>;

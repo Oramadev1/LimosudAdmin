@@ -103,20 +103,6 @@ function missingInputClass(isMissing: boolean) {
   return isMissing ? "admin-input border-amber-400 ring-1 ring-amber-200" : "admin-input";
 }
 
-const EQUIPMENT_FIELDS: Array<{ key: keyof ContractDetailsPayload["equipment"]; label: string }> = [
-  { key: "jack", label: "Jack (Cric)" },
-  { key: "wheel_wrench", label: "Wheel wrench" },
-  { key: "spare_key", label: "Spare key" },
-  { key: "warning_triangle", label: "Warning triangle" },
-  { key: "fire_extinguisher", label: "Fire extinguisher" },
-  { key: "spare_wheel", label: "Spare wheel" },
-  { key: "first_aid_kit", label: "First aid kit" },
-  { key: "gps", label: "GPS" },
-  { key: "phone_charger", label: "Phone charger" },
-  { key: "child_seat", label: "Child seat" },
-  { key: "other_accessories", label: "Other accessories" },
-];
-
 const DOCUMENT_FIELDS: Array<{ key: keyof ContractDetailsPayload["documents"]; label: string }> = [
   { key: "ww", label: "WW" },
   { key: "registration_card", label: "Registration card" },
@@ -652,25 +638,8 @@ export function ContractGenerateModal({
                 ) : null}
               </Section>
 
-              <Section title="Equipment checklist">
-                <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
-                  {EQUIPMENT_FIELDS.map((item) => (
-                    <label key={item.key} className="flex items-center gap-2 text-sm text-gray-700">
-                      <input
-                        type="checkbox"
-                        checked={Boolean(details.equipment[item.key])}
-                        onChange={(e) =>
-                          updateDetails((c) => ({
-                            ...c,
-                            equipment: { ...c.equipment, [item.key]: e.target.checked },
-                          }))
-                        }
-                      />
-                      {item.label}
-                    </label>
-                  ))}
-                </div>
-                <label className="mt-3 flex items-center gap-2 text-sm text-gray-700">
+              <Section title="Special authorization">
+                <label className="flex items-center gap-2 text-sm text-gray-700">
                   <input
                     type="checkbox"
                     checked={details.special_authorization.leave_urban_area}
