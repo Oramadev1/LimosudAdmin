@@ -22,6 +22,9 @@ export interface AdminUser {
 }
 
 export interface LoginResponse {
+  access_token: string;
+  token_type: string;
+  expires_in_minutes: number;
   user: AdminUser;
 }
 

@@ -14,13 +14,13 @@ import { useRouter } from "next/navigation";
 import { getMe, logout as logoutRequest, parseAdminUser } from "@/lib/api/auth";
 import { restoreAdminSession } from "@/lib/auth/bootstrap";
 import { ApiError } from "@/lib/api/client";
-import { clearSession, purgeLegacyAuthStorage } from "@/lib/auth/session";
+import { clearSession, setAccessToken } from "@/lib/auth/session";
 import type { AdminUser } from "@/types/api";
 
 type AuthContextValue = {
   user: AdminUser | null;
   loading: boolean;
-  setSession: (user: AdminUser) => void;
+  setSession: (token: string, user: AdminUser) => void;
   updateUser: (user: AdminUser) => void;
   refreshUser: () => Promise<void>;
   logout: () => Promise<void>;
@@ -34,10 +34,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AdminUser | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    purgeLegacyAuthStorage();
-  }, []);
-
   const bootstrap = useCallback(async () => {
     const nextUser = await restoreAdminSession();
     setUser(nextUser);
@@ -48,7 +44,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     void bootstrap();
   }, [bootstrap]);
 
-  const setSession = useCallback((nextUser: AdminUser) => {
+  const setSession = useCallback((token: string, nextUser: AdminUser) => {
+    setAccessToken(token);
     setUser(nextUser);
   }, []);
 

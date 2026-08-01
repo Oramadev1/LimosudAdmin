@@ -37,7 +37,12 @@ export function LoginForm() {
           email.trim().toLowerCase().slice(0, INPUT_LIMITS.email),
           password.slice(0, INPUT_LIMITS.password),
         );
-        setSession(response.user);
+
+        if (!response.access_token) {
+          throw new Error("Login succeeded but no access token was returned.");
+        }
+
+        setSession(response.access_token, response.user);
         router.replace("/dashboard");
       } catch (err) {
         applySubmissionError(err, "Invalid credentials or server error.");

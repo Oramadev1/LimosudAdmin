@@ -37,7 +37,6 @@ const apiClient = axios.create({
   headers: {
     Accept: "application/json",
   },
-  withCredentials: true,
 });
 
 function normalizeHeaders(headers?: HeadersInit): Record<string, string> {
@@ -65,7 +64,6 @@ function toAxiosConfig(path: string, init: RequestInit = {}): AxiosRequestConfig
     method,
     headers,
     data: init.body ?? undefined,
-    withCredentials: true,
     validateStatus: () => true,
   };
 }
